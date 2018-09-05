@@ -14,7 +14,7 @@ public class AgentDependencyGraph {
         sources = new ArrayList<>();
     }
 
-    public void addAgent(List<String> dependencies, IAgent agent, String agentName){
+    public void addAgent(String[] dependencies, IAgent agent, String agentName){
         Node agentNode = new Node(agent);
 
         if(dependencies != null){
@@ -28,7 +28,7 @@ public class AgentDependencyGraph {
             }
         }
 
-        if(dependencies == null || dependencies.size() == 0){
+        if(dependencies == null || dependencies.length == 0){
             sources.add(agentNode);
         }
 

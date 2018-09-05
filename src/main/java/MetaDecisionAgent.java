@@ -1,5 +1,6 @@
 import agents.IAgent;
 import org.deeplearning4j.api.storage.StatsStorage;
+import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
@@ -12,13 +13,17 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.learning.config.Nesterovs;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class MetaDecisionAgent {
 
     private ComputationGraph metaGraph;
+    private AgentDependencyGraph dependencyGraph;
+    private String[] outputs;
 
-    public MetaDecisionAgent(AgentDependencyGraph agentGraph){
+    public MetaDecisionAgent(AgentDependencyGraph dependencyGraph){
+        this.dependencyGraph = dependencyGraph;
         //Initialize the user interface backend
         UIServer uiServer = UIServer.getInstance();
 
@@ -39,7 +44,7 @@ public class MetaDecisionAgent {
         // for now there is only one input, but we will eventually want to feed the last decisions mask vector as input
         List<String> inputs = this.buildInputs(builder);
 
-        List<AgentDependencyGraph.Node> nodes = agentGraph.getSources();
+        List<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getSources();
         int index = 0;
         while(index != nodes.size()){
             AgentDependencyGraph.Node node = nodes.get(index);
@@ -54,13 +59,13 @@ public class MetaDecisionAgent {
             outputNames.addAll(node.agent.getOutputNames());
         }
 
-        String[] outputs = new String[outputNames.size()];
+        this.outputs = new String[outputNames.size()];
 
         for(int i = 0; i < outputNames.size(); i++){
-            outputs[i] = outputNames.get(i);
+            this.outputs[i] = outputNames.get(i);
         }
 
-        builder.setOutputs(outputs);
+        builder.setOutputs(this.outputs);
 
         ComputationGraphConfiguration conf = builder.build();
         metaGraph = new ComputationGraph(conf);
@@ -70,8 +75,42 @@ public class MetaDecisionAgent {
         metaGraph.setListeners(new StatsListener(statsStorage));
     }
 
-    public INDArray[] eval(INDArray[] features){
-        return metaGraph.output(features);
+    public String[] eval(INDArray[] features){
+        List<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getSources();
+        int index = 0;
+        while(index != nodes.size()){
+            AgentDependencyGraph.Node node = nodes.get(index);
+            nodes.addAll(node.dependents);
+            index++;
+        }
+
+        INDArray[] results = metaGraph.output(features);
+
+        HashMap<String, Float> outputValues = new HashMap<>();
+
+        for(int i = 0; i < this.outputs.length; i++){
+            outputValues.put(this.outputs[i], results[i].getFloat(0));
+        }
+
+        String[] actions = new String[nodes.size()];
+
+        for(int i = 0; i < nodes.size(); i++){
+            AgentDependencyGraph.Node node = nodes.get(i);
+            List<String> agentOutputs = node.agent.getOutputNames();
+
+            float best = 0.0f;
+            String bestAction = "";
+            for(String action : agentOutputs){
+                if(bestAction.equals("") || outputValues.get(action) > best){
+                    bestAction = action;
+                    best = outputValues.get(action);
+                }
+            }
+
+            actions[i] = bestAction;
+        }
+
+        return actions;
     }
 
     private List<String> buildInputs(ComputationGraphConfiguration.GraphBuilder builder){

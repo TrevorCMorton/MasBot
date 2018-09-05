@@ -14,20 +14,36 @@ import java.util.List;
 
 public class MeleeJoystickAgent implements IAgent{
     private List<String> outputNames;
-    private List<String> internalOutputNames;
+    private String name;
+
+    public MeleeJoystickAgent(String name){
+        this.name = name;
+
+        this.outputNames = new ArrayList<>();
+
+        String[] outputNameStubs = { "R", "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+        for(String outputName : outputNameStubs){
+            this.outputNames.add(name + outputName);
+        }
+    }
 
     @Override
     public List<String> build(ComputationGraphConfiguration.GraphBuilder builder, List<String> envInputNames, List<String> dependencyInputNames) {
         builder
-            .addLayer("Joystick1",
+            .addLayer(this.name + "Joystick1",
                 new ConvolutionLayer.Builder(8, 8).nIn(4).stride(4, 4).nOut(32).activation(Activation.RELU).build(),
                 envInputNames.get(0))
-            .addLayer("Joystick2",
+            .addLayer(this.name + "Joystick2",
                 new ConvolutionLayer.Builder(4, 4).stride(2, 2).nOut(64).activation(Activation.RELU).build(),
-                "Joystick1")
-            .addLayer("Joystick3",
+                    this.name + "Joystick1")
+            .addLayer(this.name + "Joystick3",
                 new ConvolutionLayer.Builder(3, 3).stride(1, 1).nOut(64).activation(Activation.RELU).build(),
-                "Joystick2");
+                    this.name + "Joystick2");
+
+        builder
+            .addLayer(this.name + "Joystick4",
+                new DenseLayer.Builder().nOut(512).activation(Activation.RELU).build(),
+                    this.name + "Joystick3");
 
         String[] mergeInputs = new String[dependencyInputNames.size() + envInputNames.size()];
 
@@ -38,39 +54,37 @@ public class MeleeJoystickAgent implements IAgent{
         for(int i = 1; i < envInputNames.size(); i++){
             mergeInputs[i + dependencyInputNames.size() - 1] = envInputNames.get(i);
         }
+        mergeInputs[mergeInputs.length - 1] = this.name + "Joystick4";
 
-        mergeInputs[mergeInputs.length - 1] = "Joystick3";
+        for(int i = 0; i < outputNames.size(); i++){
+            String outputName = outputNames.get(i);
 
-        builder
-            .addVertex("JoystickMerge",
-                new MergeVertex(),
-                mergeInputs)
-            .addLayer("Joystick4",
-                new DenseLayer.Builder().nOut(512).activation(Activation.RELU).build(),
-                "JoystickMerge")
-            .addLayer("JoystickDirectionsInternal",
-                new DenseLayer.Builder().nOut(9).activation(Activation.IDENTITY).build(),
-                "Joystick4")
-            .addLayer("JoystickDirections",
-                new LossLayer.Builder().lossFunction(LossFunctions.LossFunction.SQUARED_LOSS).build(),
-                "JoystickDirectionsInternal");
+            builder
+                .addLayer(outputName + "Internal",
+                        new DenseLayer.Builder().nOut(1).activation(Activation.IDENTITY).build(),
+                        mergeInputs)
+                .addLayer(outputName,
+                        new LossLayer.Builder().lossFunction(LossFunctions.LossFunction.SQUARED_LOSS).build(),
+                        outputName + "Internal");
+        }
 
-        this.outputNames = new ArrayList<>();
-        outputNames.add("JoystickDirections");
-
-        this.internalOutputNames = new ArrayList<>();
-        internalOutputNames.add("JoystickDirectionsInternal");
-
-        return internalOutputNames;
+        return this.getInternalOutputNames();
     }
 
     @Override
     public List<String> getOutputNames() {
-        return outputNames;
+        return this.outputNames;
     }
 
     @Override
     public List<String> getInternalOutputNames() {
-        return internalOutputNames;
+        ArrayList<String> internalNames = new ArrayList<>();
+
+        for(int i = 0; i < outputNames.size(); i++){
+            String outputName = outputNames.get(i);
+            internalNames.add(outputName + "Internal");
+        }
+
+        return internalNames;
     }
 }
