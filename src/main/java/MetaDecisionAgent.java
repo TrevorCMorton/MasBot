@@ -13,6 +13,7 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.learning.config.Nesterovs;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
@@ -44,13 +45,10 @@ public class MetaDecisionAgent {
         // for now there is only one input, but we will eventually want to feed the last decisions mask vector as input
         List<String> inputs = this.buildInputs(builder);
 
-        List<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getSources();
-        int index = 0;
-        while(index != nodes.size()){
-            AgentDependencyGraph.Node node = nodes.get(index);
+        Collection<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getNodes();
+
+        for(AgentDependencyGraph.Node node : nodes){
             this.buildHelper(node, builder, inputs);
-            nodes.addAll(node.dependents);
-            index++;
         }
 
         List<String> outputNames = new ArrayList<>();
@@ -76,13 +74,7 @@ public class MetaDecisionAgent {
     }
 
     public String[] eval(INDArray[] features){
-        List<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getSources();
-        int index = 0;
-        while(index != nodes.size()){
-            AgentDependencyGraph.Node node = nodes.get(index);
-            nodes.addAll(node.dependents);
-            index++;
-        }
+        Collection<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getNodes();
 
         INDArray[] results = metaGraph.output(features);
 
@@ -93,9 +85,9 @@ public class MetaDecisionAgent {
         }
 
         String[] actions = new String[nodes.size()];
+        int i = 0;
 
-        for(int i = 0; i < nodes.size(); i++){
-            AgentDependencyGraph.Node node = nodes.get(i);
+        for(AgentDependencyGraph.Node node : nodes){
             List<String> agentOutputs = node.agent.getOutputNames();
 
             float best = 0.0f;
@@ -108,6 +100,7 @@ public class MetaDecisionAgent {
             }
 
             actions[i] = bestAction;
+            i++;
         }
 
         return actions;

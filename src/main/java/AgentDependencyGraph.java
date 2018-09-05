@@ -2,16 +2,15 @@ import agents.IAgent;
 
 import javax.xml.bind.ValidationException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
 public class AgentDependencyGraph {
     private HashMap<String, Node> agentNodes;
-    private List<Node> sources;
 
     public AgentDependencyGraph(){
-        agentNodes = new HashMap<>();
-        sources = new ArrayList<>();
+        this.agentNodes = new HashMap<>();
     }
 
     public void addAgent(String[] dependencies, IAgent agent, String agentName){
@@ -19,8 +18,8 @@ public class AgentDependencyGraph {
 
         if(dependencies != null){
             for(String dependency : dependencies){
-                if(agentNodes.containsKey(dependency)){
-                    Node dependencyNode = agentNodes.get(dependency);
+                if(this.agentNodes.containsKey(dependency)){
+                    Node dependencyNode = this.agentNodes.get(dependency);
                     dependencyNode.dependents.add(agentNode);
                     agentNode.dependencies.add(dependencyNode);
                 }
@@ -28,15 +27,11 @@ public class AgentDependencyGraph {
             }
         }
 
-        if(dependencies == null || dependencies.length == 0){
-            sources.add(agentNode);
-        }
-
-        agentNodes.put(agentName, agentNode);
+        this.agentNodes.put(agentName, agentNode);
     }
 
-    public List<Node> getSources(){
-        return this.sources;
+    public Collection<Node> getNodes(){
+        return this.agentNodes.values();
     }
 
     public class Node{

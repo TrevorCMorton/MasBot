@@ -59,8 +59,15 @@ public class MeleeRunner {
 
             bridge.execute(results);
 
+            StringBuilder sb = new StringBuilder();
+
+            for(String action : results){
+                sb.append(action);
+                sb.append(" ");
+            }
+
             long end = System.currentTimeMillis();
-            System.out.println((end - start)  + "ms");
+            System.out.println("Computed actions " + sb.toString() + " in " + (end - start)  + "ms");
 
             if(end - start < 32){
                 Thread.sleep(32 - (end - start));
