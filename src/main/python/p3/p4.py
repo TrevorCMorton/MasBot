@@ -7,6 +7,7 @@ import p3.state_manager
 import p3.screen_watcher
 import numpy as np
 import cv2
+from threading import Thread
 import time
 
 
@@ -17,6 +18,7 @@ class P4:
         self.setup_cpu = False
         self.sw = None
         self.dolphin_dir = None
+        self.reward = 0
 
     def find_dolphin_dir(self):
         """Attempts to find the dolphin user directory. None on failure."""
@@ -81,8 +83,13 @@ class P4:
         with p3.pad.Pad(pad_path) as pad, p3.memory_watcher.MemoryWatcher(mw_path) as mw:
             self.run(game_state, sm, mw, pad)
         self.sw = p3.screen_watcher.ScreenWatcher()
+        thread = Thread(target=self.frame_reward)
+        thread.start()
 
     def get_frame_reward(self):
+        return self.reward
+
+    def frame_reward(self):
         game_state = p3.state.State()
         sm = p3.state_manager.StateManager(game_state)
         mw_path = self.dolphin_dir + '/MemoryWatcher/MemoryWatcher'
@@ -93,7 +100,18 @@ class P4:
                 if res is not None:
                     sm.handle(*res)
                 if game_state.frame > last_frame:
-                    return game_state.players
+                    i = 0
+                    reward = 0
+                    players = game_state.players
+                    while i < len(players):
+                        if i == 2:
+                            reward -= players[i].percent
+                            reward += players[i].stocks * 300
+                        else:
+                            reward += players[i].percent
+                            reward -= players[i].stocks * 300
+                        i += 1
+                    self.reward = reward
 
     def get_frame(self, size):
         return self.to_grayscale(cv2.resize(np.array(next(self.sw)), (size, size), interpolation=cv2.INTER_LINEAR)[:,:,:3])

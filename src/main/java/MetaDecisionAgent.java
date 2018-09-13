@@ -10,6 +10,7 @@ import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.stats.StatsListener;
 import org.deeplearning4j.ui.storage.InMemoryStatsStorage;
 import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.Nesterovs;
 
 import java.util.ArrayList;
@@ -25,14 +26,6 @@ public class MetaDecisionAgent {
 
     public MetaDecisionAgent(AgentDependencyGraph dependencyGraph){
         this.dependencyGraph = dependencyGraph;
-        //Initialize the user interface backend
-        UIServer uiServer = UIServer.getInstance();
-
-        //Configure where the network information (gradients, score vs. time etc) is to be stored. Here: store in memory.
-        StatsStorage statsStorage = new InMemoryStatsStorage();         //Alternative: new FileStatsStorage(File), for saving and loading later
-
-        //Attach the StatsStorage instance to the UI: this allows the contents of the StatsStorage to be visualized
-        uiServer.attach(statsStorage);
 
         ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
             .seed(123)
@@ -42,10 +35,14 @@ public class MetaDecisionAgent {
             .biasUpdater(new Nesterovs.Builder().learningRate(0.02).build())
             .graphBuilder();
 
-        // for now there is only one input, but we will eventually want to feed the last decisions mask vector as input
-        List<String> inputs = this.buildInputs(builder);
-
         Collection<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getNodes();
+
+        int numActions = 0;
+        for(AgentDependencyGraph.Node node : nodes){
+            numActions += node.agent.getOutputNames().size();
+        }
+
+        List<String> inputs = this.buildInputs(builder, numActions);
 
         for(AgentDependencyGraph.Node node : nodes){
             this.buildHelper(node, builder, inputs);
@@ -68,9 +65,6 @@ public class MetaDecisionAgent {
         ComputationGraphConfiguration conf = builder.build();
         metaGraph = new ComputationGraph(conf);
         metaGraph.init();
-
-        //Then add the StatsListener to collect this information from the network, as it trains
-        metaGraph.setListeners(new StatsListener(statsStorage));
     }
 
     public String[] eval(INDArray[] features){
@@ -106,17 +100,43 @@ public class MetaDecisionAgent {
         return actions;
     }
 
-    private List<String> buildInputs(ComputationGraphConfiguration.GraphBuilder builder){
+    public INDArray[] getOutputMask(String[] actions){
+        INDArray[] masks = new INDArray[this.outputs.length];
+        for(int i = 0; i < this.outputs.length; i++){
+            INDArray maskEntry = Nd4j.zeros(1);
+            for(int j = 0; j < actions.length; j++){
+                if(this.outputs[i].equals(actions[j])){
+                    maskEntry = Nd4j.ones(1);
+                }
+            }
+            masks[i] = maskEntry;
+        }
+        return masks;
+    }
+
+    public ComputationGraph getMetaGraph() {
+        return this.metaGraph;
+    }
+
+    public void setMetaGraph(ComputationGraph graph){
+        this.metaGraph = graph;
+    }
+
+    public int getNumOutputs(){
+        return metaGraph.getNumOutputArrays();
+    }
+
+    private List<String> buildInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
         List<String> inputNames = new ArrayList<>();
         inputNames.add("screen");
+        //inputNames.add("prevActions");
 
-        builder.addInputs(inputNames).setInputTypes(InputType.convolutionalFlat(84,84,4));
+        builder.addInputs(inputNames).setInputTypes(InputType.convolutionalFlat(84,84,4)/*, InputType.feedForward(numActions)*/);
 
         return inputNames;
     }
 
     private List<String> buildHelper(AgentDependencyGraph.Node node, ComputationGraphConfiguration.GraphBuilder builder, List<String> envInputNames){
-
         if(node.built){
             return node.agent.getInternalOutputNames();
         }

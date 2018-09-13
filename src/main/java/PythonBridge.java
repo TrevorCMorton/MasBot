@@ -38,5 +38,5 @@ public class PythonBridge {
 
     public float[] getFlatFrame() { return this.p4.get_flat_frame(); }
 
-    public PyObject getReward() { return this.p4.get_frame_reward(); }
+    public float getReward() { return this.p4.get_frame_reward(); }
 }

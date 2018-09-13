@@ -3,3 +3,4 @@
 *.iso
 *.log
 target
+*__pycache__*

@@ -7,9 +7,10 @@ call.start()
 
 while True:
     start = time.time()
-    frame = call.get_frame(168)
-    #reward = call.get_frame_reward()
-    call.execute(["MNE"])
+    frame = call.get_frame(84)
+    reward = call.get_frame_reward()
+    print(reward)
+    call.get_frame_reward()
     end = time.time()
     print(end * 1000 - start * 1000)
     # Display the resulting frame
