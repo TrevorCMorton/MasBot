@@ -1,4 +1,4 @@
-package agents;
+package drl.agents;
 
 public class MeleeButtonAgent {
 }

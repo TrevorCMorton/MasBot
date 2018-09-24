@@ -1,4 +1,4 @@
-package servers;
+package drl.servers;
 
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.MultiDataSet;
@@ -16,11 +16,16 @@ public class DataPoint {
         this.masks = masks;
     }
 
-    public MultiDataSet getDataSetWithQOffset(INDArray[] currentLabels){
+    public MultiDataSet getDataSetWithQOffset(INDArray[] currentLabels, float decayRate){
         INDArray[] qOffsetLabels = new INDArray[this.labels.length];
 
         for(int i = 0; i < this.labels.length; i++){
-            qOffsetLabels[i] = this.labels[i].add(currentLabels[i]);
+            if(labels[i].amaxNumber().intValue() == 1){
+                qOffsetLabels[i] = this.labels[i];
+            }
+            else {
+                qOffsetLabels[i] = this.labels[i].add(currentLabels[i].mul(decayRate));
+            }
         }
 
         return new MultiDataSet(this.startState, qOffsetLabels, null, masks);

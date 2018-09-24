@@ -1,12 +1,14 @@
-import agents.IAgent;
+package drl;
 
-import javax.xml.bind.ValidationException;
+import drl.agents.IAgent;
+
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
-public class AgentDependencyGraph {
+public class AgentDependencyGraph implements Serializable {
     private HashMap<String, Node> agentNodes;
 
     public AgentDependencyGraph(){
@@ -34,7 +36,7 @@ public class AgentDependencyGraph {
         return this.agentNodes.values();
     }
 
-    public class Node{
+    public class Node implements Serializable{
         public IAgent agent;
         public List<Node> dependents;
         public List<Node> dependencies;

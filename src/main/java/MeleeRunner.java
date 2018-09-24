@@ -1,20 +1,27 @@
-import agents.IAgent;
-import agents.MeleeJoystickAgent;
+import drl.agents.IAgent;
+import drl.agents.MeleeJoystickAgent;
+import drl.AgentDependencyGraph;
+import drl.MetaDecisionAgent;
+import drl.servers.LocalTrainingServer;
+import drl.servers.NetworkTrainingServer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.jpy.PyObject;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
-import servers.ITrainingServer;
-import servers.LocalTrainingServer;
+import drl.servers.DummyTrainingServer;
+import drl.servers.ITrainingServer;
 
-import java.util.List;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
 public class MeleeRunner {
 
     public static void main(String[] args) throws Exception{
+        //Nd4j.getMemoryManager().togglePeriodicGc(false);
+
         Runtime rt = Runtime.getRuntime();
         Process pr = rt.exec("dolphin-emu -e Melee.iso");
 
+        /*
         AgentDependencyGraph dependencyGraph = new AgentDependencyGraph();
 
         IAgent joystickAgent = new MeleeJoystickAgent("M");
@@ -24,14 +31,22 @@ public class MeleeRunner {
 
         MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph);
 
-        ITrainingServer server = new LocalTrainingServer(decisionAgent.getMetaGraph(), 10000, 2);
+        //ITrainingServer server = new LocalTrainingServer(decisionAgent.getMetaGraph(), 10000, 128, .9f);
+        ITrainingServer server = new DummyTrainingServer(decisionAgent.getMetaGraph());
+        */
+
+        //ITrainingServer server = new NetworkTrainingServer("gauss.csse.rose-hulman.edu");
+        ITrainingServer server = new NetworkTrainingServer("localhost");
+
+        Thread t = new Thread(server);
+        t.start();
+
+        AgentDependencyGraph dependencyGraph = server.getDependencyGraph();
+        MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph, false);
+        decisionAgent.setMetaGraph(server.getUpdatedNetwork());
 
         PythonBridge bridge = new PythonBridge();
-
         bridge.start();
-
-        Thread serverThread = new Thread(server);
-        serverThread.start();
 
         float[][] inputBuffer = new float[4][];
 
@@ -39,7 +54,6 @@ public class MeleeRunner {
             inputBuffer[i] = new float[84 * 84];
         }
 
-        float prevScore = 0;
         INDArray[] prevActionMask = decisionAgent.getOutputMask(new String[0]);
 
         int[] shape = {1, 4, 84, 84};
@@ -51,9 +65,18 @@ public class MeleeRunner {
         while(true){
             long start = System.currentTimeMillis();
 
-            if(count % 10000 == 0){
-                //ComputationGraph graph = server.getUpdatedNetwork();
-                //decisionAgent.setMetaGraph(graph);
+            if(count % 300 == 0){
+                System.out.println("Cleaning took " + (System.currentTimeMillis() - start) + " ms");
+                //Nd4j.getMemoryManager().invokeGc();
+            }
+
+            if (bridge.isPostGame()){
+                ComputationGraph graph = server.getUpdatedNetwork();
+                decisionAgent.setMetaGraph(graph);
+            }
+
+            while(bridge.isPostGame()){
+                Thread.sleep(10);
             }
 
             INDArray frame = getFrame(bridge, inputBuffer);
@@ -70,15 +93,17 @@ public class MeleeRunner {
 
             long end = System.currentTimeMillis();
             if(end - start < 100) {
-                server.addData(prevState, state, prevActionMask, curScore - prevScore);
+                if(curScore != 0) {
+                    System.out.println(curScore);
+                }
+                server.addData(prevState, state, prevActionMask, curScore);
                 Thread.sleep(100 - (end - start));
             }
             else{
-                System.out.println((end - start)  + " ms " + server.getDataSize());
+                System.out.println((end - start)  + " ms ");
             }
 
             prevState = state;
-            prevScore = curScore;
             prevActionMask = mask;
 
             count++;

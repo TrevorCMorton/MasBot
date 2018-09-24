@@ -1,16 +1,18 @@
-import agents.IAgent;
-import org.deeplearning4j.api.storage.StatsStorage;
-import org.deeplearning4j.eval.Evaluation;
+package drl;
+
+import drl.agents.IAgent;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.weights.WeightInit;
-import org.deeplearning4j.ui.api.UIServer;
-import org.deeplearning4j.ui.stats.StatsListener;
-import org.deeplearning4j.ui.storage.InMemoryStatsStorage;
+import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.learning.config.AdaDelta;
+import org.nd4j.linalg.learning.config.AdaMax;
+import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.learning.config.Nesterovs;
 
 import java.util.ArrayList;
@@ -23,16 +25,19 @@ public class MetaDecisionAgent {
     private ComputationGraph metaGraph;
     private AgentDependencyGraph dependencyGraph;
     private String[] outputs;
+    private long iters;
 
-    public MetaDecisionAgent(AgentDependencyGraph dependencyGraph){
+    public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, boolean build){
         this.dependencyGraph = dependencyGraph;
+
+        iters = 0;
 
         ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
             .seed(123)
             .l2(0.0005)
             .weightInit(WeightInit.XAVIER)
-            .updater(new Nesterovs.Builder().learningRate(.01).build())
-            .biasUpdater(new Nesterovs.Builder().learningRate(0.02).build())
+            .updater(new Adam(.01))
+            .biasUpdater(new Adam(.01))
             .graphBuilder();
 
         Collection<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getNodes();
@@ -62,9 +67,11 @@ public class MetaDecisionAgent {
 
         builder.setOutputs(this.outputs);
 
-        ComputationGraphConfiguration conf = builder.build();
-        metaGraph = new ComputationGraph(conf);
-        metaGraph.init();
+        if(build) {
+            ComputationGraphConfiguration conf = builder.build();
+            metaGraph = new ComputationGraph(conf);
+            metaGraph.init();
+        }
     }
 
     public String[] eval(INDArray[] features){
@@ -84,18 +91,29 @@ public class MetaDecisionAgent {
         for(AgentDependencyGraph.Node node : nodes){
             List<String> agentOutputs = node.agent.getOutputNames();
 
-            float best = 0.0f;
-            String bestAction = "";
-            for(String action : agentOutputs){
-                if(bestAction.equals("") || outputValues.get(action) > best){
-                    bestAction = action;
-                    best = outputValues.get(action);
-                }
+            if(Math.random() * 100000 > iters){
+                actions[i] = agentOutputs.get((int)(Math.random() * agentOutputs.size()));
             }
-
-            actions[i] = bestAction;
+            else {
+                float best = 0.0f;
+                String bestAction = "";
+                for (String action : agentOutputs) {
+                    System.out.print(action + ": " + outputValues.get(action) + " ");
+                    if (bestAction.equals("") || outputValues.get(action) > best) {
+                        bestAction = action;
+                        best = outputValues.get(action);
+                    }
+                }
+                System.out.println("Best: " + bestAction);
+                actions[i] = bestAction;
+            }
             i++;
         }
+
+        if(iters % 100 == 0) {
+            System.out.println(iters);
+        }
+        iters++;
 
         return actions;
     }
@@ -128,10 +146,21 @@ public class MetaDecisionAgent {
 
     private List<String> buildInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
         List<String> inputNames = new ArrayList<>();
-        inputNames.add("screen");
+        inputNames.add("Screen3");
         //inputNames.add("prevActions");
 
-        builder.addInputs(inputNames).setInputTypes(InputType.convolutionalFlat(84,84,4)/*, InputType.feedForward(numActions)*/);
+        builder.addInputs("Screen").setInputTypes(InputType.convolutionalFlat(84,84,4)/*, InputType.feedForward(numActions)*/);
+
+        builder
+                .addLayer("Screen1",
+                new ConvolutionLayer.Builder(8, 8).nIn(4).stride(4, 4).nOut(32).activation(Activation.RELU).build(),
+                "Screen")
+                .addLayer("Screen2",
+                        new ConvolutionLayer.Builder(4, 4).stride(2, 2).nOut(64).activation(Activation.RELU).build(),
+                        "Screen1")
+                .addLayer("Screen3",
+                        new ConvolutionLayer.Builder(3, 3).stride(1, 1).nOut(64).activation(Activation.RELU).build(),
+                        "Screen2");
 
         return inputNames;
     }

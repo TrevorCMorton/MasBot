@@ -7,4 +7,5 @@ public interface P4 {
     float[] get_flat_frame();
     void start();
     void execute(String[] action);
+    boolean is_post_game();
 }
