@@ -13,7 +13,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <shadedClassifier>bin</shadedClassifier>
 
-
         <java.version>1.8</java.version>
         <nd4j.version>1.0.0-alpha</nd4j.version>
         <dl4j.version>1.0.0-alpha</dl4j.version>
@@ -155,7 +154,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>Main</mainClass>
+                            <mainClass>MeleeRunner</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

@@ -19,6 +19,7 @@ class P4:
         self.sw = None
         self.dolphin_dir = None
         self.reward = 0
+        self.players = []
 
     def find_dolphin_dir(self):
         """Attempts to find the dolphin user directory. None on failure."""
@@ -52,17 +53,17 @@ class P4:
                 result = self.make_action(state, pad, mm)
 
     def make_action(self, state, pad, mm):
-        mm.press_start_lots(state, pad)
         if state.menu == p3.state.Menu.Game:
             pad.reset()
             return True
         elif state.menu == p3.state.Menu.Characters:
             if mm.pick_cpu(state, pad):
-                mm.pick_fox(state, pad)
+                if mm.pick_fox(state, pad):
+                    if mm.set_rules(state, pad):
+                        mm.press_start_lots(state, pad)
             return False
         elif state.menu == p3.state.Menu.Stages:
-            # Handle this once we know where the cursor position is in memory.
-            pad.tilt_stick(p3.pad.Stick.C, 0.5, 0.5)
+            mm.press_start_lots(state, pad)
             return False
         elif state.menu == p3.state.Menu.PostGame:
             mm.press_start_lots(state, pad)
@@ -87,7 +88,9 @@ class P4:
         thread.start()
 
     def get_frame_reward(self):
-        return self.reward
+        temp = self.reward
+        self.reward = 0
+        return temp
 
     def frame_reward(self):
         game_state = p3.state.State()
@@ -101,17 +104,24 @@ class P4:
                     sm.handle(*res)
                 if game_state.frame > last_frame:
                     i = 0
-                    reward = 0
                     players = game_state.players
+                    players_tuples = []
                     while i < len(players):
-                        if i == 2:
-                            reward -= players[i].percent
-                            reward += players[i].stocks * 300
-                        else:
-                            reward += players[i].percent
-                            reward -= players[i].stocks * 300
+                        tuple = (players[i].percent, players[i].stocks)
+                        if len(self.players) != 0:
+                            if i == 2:
+                                if self.players[i][0] != tuple[0]:
+                                    self.reward -= .1
+                                if self.players[i][1] != tuple[1]:
+                                    self.reward -= 1
+                            else:
+                                if self.players[i][0] != tuple[0]:
+                                    self.reward += .1
+                                if self.players[i][1] != tuple[1]:
+                                    self.reward += 1
                         i += 1
-                    self.reward = reward
+                        players_tuples.append(tuple)
+                    self.players = players_tuples
 
     def get_frame(self, size):
         return self.to_grayscale(cv2.resize(np.array(next(self.sw)), (size, size), interpolation=cv2.INTER_LINEAR)[:,:,:3])

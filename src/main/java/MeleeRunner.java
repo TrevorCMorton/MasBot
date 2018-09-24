@@ -24,10 +24,9 @@ public class MeleeRunner {
 
         MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph);
 
-        ITrainingServer server = new LocalTrainingServer(decisionAgent.getMetaGraph(), 10000, 2);
+        ITrainingServer server = new LocalTrainingServer(decisionAgent.getMetaGraph(), 10000, 128);
 
         PythonBridge bridge = new PythonBridge();
-
         bridge.start();
 
         Thread serverThread = new Thread(server);
@@ -39,7 +38,6 @@ public class MeleeRunner {
             inputBuffer[i] = new float[84 * 84];
         }
 
-        float prevScore = 0;
         INDArray[] prevActionMask = decisionAgent.getOutputMask(new String[0]);
 
         int[] shape = {1, 4, 84, 84};
@@ -70,15 +68,15 @@ public class MeleeRunner {
 
             long end = System.currentTimeMillis();
             if(end - start < 100) {
-                server.addData(prevState, state, prevActionMask, curScore - prevScore);
+                System.out.println(curScore);
+                server.addData(prevState, state, prevActionMask, curScore);
                 Thread.sleep(100 - (end - start));
             }
             else{
-                System.out.println((end - start)  + " ms " + server.getDataSize());
+                System.out.println((end - start)  + " ms ");
             }
 
             prevState = state;
-            prevScore = curScore;
             prevActionMask = mask;
 
             count++;
