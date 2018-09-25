@@ -36,7 +36,8 @@ public class MeleeRunner {
         */
 
         //ITrainingServer server = new NetworkTrainingServer("gauss.csse.rose-hulman.edu");
-        ITrainingServer server = new NetworkTrainingServer("localhost");
+        ITrainingServer server = new NetworkTrainingServer("192.168.3.47");
+        //ITrainingServer server = new NetworkTrainingServer("localhost");
 
         Thread t = new Thread(server);
         t.start();
@@ -71,8 +72,9 @@ public class MeleeRunner {
             }
 
             if (bridge.isPostGame()){
-                ComputationGraph graph = server.getUpdatedNetwork();
-                decisionAgent.setMetaGraph(graph);
+                break;
+                //ComputationGraph graph = server.getUpdatedNetwork();
+                //decisionAgent.setMetaGraph(graph);
             }
 
             while(bridge.isPostGame()){
@@ -108,6 +110,10 @@ public class MeleeRunner {
 
             count++;
         }
+
+        pr.destroy();
+        //bridge.destroy();
+        server.stop();
     }
 
     public static INDArray getFrame(PythonBridge bridge, float[][] inputBuffer){

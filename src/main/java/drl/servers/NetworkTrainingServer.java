@@ -19,11 +19,13 @@ public class NetworkTrainingServer implements ITrainingServer{
     private Queue<Object> dataMessages;
     private boolean sendData;
     private boolean sendingData;
+    private boolean run;
 
     public NetworkTrainingServer(String url){
         dataMessages = new LinkedList<>();
         sendData = true;
         sendingData = true;
+        run = true;
 
         try {
             Socket socket = this.getServerSocket(url);
@@ -89,9 +91,14 @@ public class NetworkTrainingServer implements ITrainingServer{
     }
 
     @Override
+    public void stop() {
+        this.run = false;
+    }
+
+    @Override
     public void run() {
         try {
-            while (true) {
+            while (this.run) {
                 if(!sendData){
                     sendingData = false;
                     while(!sendData){

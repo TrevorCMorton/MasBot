@@ -91,7 +91,7 @@ public class MetaDecisionAgent {
         for(AgentDependencyGraph.Node node : nodes){
             List<String> agentOutputs = node.agent.getOutputNames();
 
-            if(Math.random() * 100000 > iters){
+            if(Math.random() * 5000 > iters){
                 actions[i] = agentOutputs.get((int)(Math.random() * agentOutputs.size()));
             }
             else {
