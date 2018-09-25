@@ -151,7 +151,7 @@ public class LocalTrainingServer implements ITrainingServer{
     public void run() {
         while(true){
             System.out.print("");
-            if (this.dataPoints.size() > this.batchSize && iterations <= pointsGathered) {
+            if (this.dataPoints.size() > this.batchSize /*&& iterations <= pointsGathered*/) {
                 INDArray[][] startStates = new INDArray[this.batchSize][];
                 INDArray[][] endStates = new INDArray[this.batchSize][];
                 INDArray[][] labels = new INDArray[this.batchSize][];
