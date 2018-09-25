@@ -8,7 +8,7 @@ class MenuManager:
         self.selected_cpu = False
         self.setup_cpu = False
         self.entered_menu = False
-        self.rules_set = False
+        self.rules_set = True
         self.menu_count = 0
         self.start_frame = -1
 

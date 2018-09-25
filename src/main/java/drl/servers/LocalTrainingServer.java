@@ -39,6 +39,7 @@ public class LocalTrainingServer implements ITrainingServer{
     private boolean connectFromNetwork;
     private int pointsGathered;
     private int iterations;
+    private boolean run;
 
     public LocalTrainingServer(boolean connectFromNetwork, AgentDependencyGraph dependencyGraph, int maxReplaySize, int batchSize, float decayRate){
         this.connectFromNetwork = connectFromNetwork;
@@ -61,6 +62,7 @@ public class LocalTrainingServer implements ITrainingServer{
         this.batchSize = batchSize;
         this.random = new Random(324);
         this.decayRate = decayRate;
+        this.run = true;
     }
 
     public static void main(String[] args) throws Exception{
@@ -149,7 +151,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
     @Override
     public void run() {
-        while(true){
+        while(this.run){
             System.out.print("");
             if (this.dataPoints.size() > this.batchSize /*&& iterations <= pointsGathered*/) {
                 INDArray[][] startStates = new INDArray[this.batchSize][];
@@ -236,6 +238,11 @@ public class LocalTrainingServer implements ITrainingServer{
     @Override
     public AgentDependencyGraph getDependencyGraph() {
         return this.dependencyGraph;
+    }
+
+    @Override
+    public void stop() {
+        this.run  = false;
     }
 
     private INDArray[] concatSet(INDArray[][] set){

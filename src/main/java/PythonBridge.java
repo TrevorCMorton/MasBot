@@ -41,4 +41,8 @@ public class PythonBridge {
     public float getReward() { return this.p4.get_frame_reward(); }
 
     public boolean isPostGame() {return p4.is_post_game(); }
+
+    public void destroy() {
+        PyLib.stopPython();
+    }
 }
