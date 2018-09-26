@@ -35,7 +35,7 @@ public class MetaDecisionAgent {
             .seed(123)
             .l2(0.0005)
             .weightInit(WeightInit.XAVIER)
-            .updater(new Adam(.0005))
+            .updater(new Nesterovs(.1))
             .graphBuilder();
 
         Collection<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getNodes();
@@ -138,8 +138,8 @@ public class MetaDecisionAgent {
         this.metaGraph = graph;
     }
 
-    public int getNumOutputs(){
-        return metaGraph.getNumOutputArrays();
+    public String[] getOutputNames(){
+        return this.outputs;
     }
 
     private List<String> buildInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
