@@ -32,6 +32,13 @@ public class LocalTrainingServer implements ITrainingServer{
 
     private ComputationGraph graph;
     private AgentDependencyGraph dependencyGraph;
+    private MetaDecisionAgent agent;
+
+    private CircularFifoQueue<DataPoint> neutralPoints;
+    private CircularFifoQueue<DataPoint> posPoints;
+    private CircularFifoQueue<DataPoint> negPoints;
+    private CircularFifoQueue<DataPoint> posTermPoints;
+    private CircularFifoQueue<DataPoint> negTermPoints;
 
     private CircularFifoQueue<DataPoint> dataPoints;
     private int batchSize;
@@ -46,8 +53,8 @@ public class LocalTrainingServer implements ITrainingServer{
         this.connectFromNetwork = connectFromNetwork;
 
         this.dependencyGraph = dependencyGraph;
-        MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph, 0, true);
-        this.graph = decisionAgent.getMetaGraph();
+        this.agent = new MetaDecisionAgent(dependencyGraph, 0, true);
+        this.graph = this.agent.getMetaGraph();
         /*
         //Initialize the user interface backend
         UIServer uiServer = UIServer.getInstance();
@@ -74,13 +81,21 @@ public class LocalTrainingServer implements ITrainingServer{
         IAgent abuttonAgent = new MeleeButtonAgent("A");
         dependencyGraph.addAgent(null, joystickAgent, "M");
         //dependencyGraph.addAgent(new String[]{"M"}, cstickAgent, "C");
-        dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
+        //dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
 
         int replaySize = Integer.parseInt(args[0]);
         int batchSize = Integer.parseInt(args[1]);
         float decayRate = Float.parseFloat(args[2]);
 
-        ITrainingServer server = new LocalTrainingServer(true, dependencyGraph, replaySize, batchSize, decayRate);
+        LocalTrainingServer server = new LocalTrainingServer(true, dependencyGraph, replaySize, batchSize, decayRate);
+
+        File pretrained = new File(server.getModelName());
+
+        if(pretrained.exists()){
+            System.out.println("Loading model from file");
+            ComputationGraph model = ModelSerializer.restoreComputationGraph(pretrained, true);
+            server.setGraph(model);
+        }
 
         Thread t = new Thread(server);
         t.start();
@@ -221,14 +236,25 @@ public class LocalTrainingServer implements ITrainingServer{
     @Override
     public ComputationGraph getUpdatedNetwork() {
         try{
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ModelSerializer.writeModel(this.graph, baos, true);
+
+            byte[] modelBytes = baos.toByteArray();
+
+            File f = new File(this.getModelName());
+
+            if(f.exists()){
+                f.delete();
+            }
+
+            FileOutputStream fout = new FileOutputStream(f);
+            fout.write(modelBytes);
+
             if(connectFromNetwork){
                 return this.graph;
             }
             else {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                ModelSerializer.writeModel(this.graph, baos, true);
-
-                ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+                ByteArrayInputStream bais = new ByteArrayInputStream(modelBytes);
                 return ModelSerializer.restoreComputationGraph(bais, true);
             }
         }
@@ -246,6 +272,27 @@ public class LocalTrainingServer implements ITrainingServer{
     @Override
     public void stop() {
         this.run  = false;
+    }
+
+    protected String getModelName(){
+        StringBuilder sb = new StringBuilder();
+        sb.append("model-");
+        for(String output : this.agent.getOutputNames()){
+            sb.append(output);
+            sb.append("-");
+        }
+        sb.append(dataPoints.maxSize());
+        sb.append("-");
+        sb.append(this.batchSize);
+        sb.append("-");
+        sb.append(this.decayRate);
+        sb.append(".mod");
+        return sb.toString();
+    }
+
+    protected void setGraph(ComputationGraph graph){
+        this.graph = graph;
+        this.graph.setListeners(new ScoreIterationListener(100));
     }
 
     private INDArray[] concatSet(INDArray[][] set){
