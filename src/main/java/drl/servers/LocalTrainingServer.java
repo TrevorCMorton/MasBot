@@ -3,6 +3,7 @@ package drl.servers;
 import drl.AgentDependencyGraph;
 import drl.MetaDecisionAgent;
 import drl.agents.IAgent;
+import drl.agents.MeleeButtonAgent;
 import drl.agents.MeleeJoystickAgent;
 import org.deeplearning4j.api.storage.StatsStorage;
 import org.deeplearning4j.nn.graph.ComputationGraph;
@@ -70,8 +71,10 @@ public class LocalTrainingServer implements ITrainingServer{
 
         IAgent joystickAgent = new MeleeJoystickAgent("M");
         IAgent cstickAgent = new MeleeJoystickAgent("C");
+        IAgent abuttonAgent = new MeleeButtonAgent("A");
         dependencyGraph.addAgent(null, joystickAgent, "M");
         //dependencyGraph.addAgent(new String[]{"M"}, cstickAgent, "C");
+        dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
 
         int replaySize = Integer.parseInt(args[0]);
         int batchSize = Integer.parseInt(args[1]);
