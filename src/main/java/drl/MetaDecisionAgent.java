@@ -10,10 +10,7 @@ import org.deeplearning4j.nn.weights.WeightInit;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.learning.config.AdaDelta;
-import org.nd4j.linalg.learning.config.AdaMax;
-import org.nd4j.linalg.learning.config.Adam;
-import org.nd4j.linalg.learning.config.Nesterovs;
+import org.nd4j.linalg.learning.config.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,8 +35,7 @@ public class MetaDecisionAgent {
             .seed(123)
             .l2(0.0005)
             .weightInit(WeightInit.XAVIER)
-            .updater(new Adam(.01))
-            .biasUpdater(new Adam(.01))
+            .updater(new Adam(.0005))
             .graphBuilder();
 
         Collection<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getNodes();

@@ -35,8 +35,9 @@ public class MeleeRunner {
         ITrainingServer server = new DummyTrainingServer(decisionAgent.getMetaGraph());
         */
 
-        //ITrainingServer server = new NetworkTrainingServer("gauss.csse.rose-hulman.edu");
-        ITrainingServer server = new NetworkTrainingServer("192.168.3.47");
+        //NetworkTrainingServer server = new NetworkTrainingServer("gauss.csse.rose-hulman.edu");
+        ITrainingServer server = new NetworkTrainingServer("localhost");
+        //ITrainingServer server = new NetworkTrainingServer("192.168.3.47");
         //ITrainingServer server = new NetworkTrainingServer("localhost");
 
         Thread t = new Thread(server);
@@ -67,8 +68,9 @@ public class MeleeRunner {
             long start = System.currentTimeMillis();
 
             if(count % 300 == 0){
-                System.out.println("Cleaning took " + (System.currentTimeMillis() - start) + " ms");
-                //Nd4j.getMemoryManager().invokeGc();
+                //server.flushQueue();
+
+                System.out.println("Flushing took " + (System.currentTimeMillis() - start) + " ms");
             }
 
             if (bridge.isPostGame()){

@@ -28,7 +28,7 @@ public class MeleeJoystickAgent implements IAgent{
     public List<String> build(ComputationGraphConfiguration.GraphBuilder builder, List<String> envInputNames, List<String> dependencyInputNames) {
         builder
             .addLayer(this.name + "Joystick1",
-                new DenseLayer.Builder().nOut(512).activation(Activation.TANH).build(),
+                new DenseLayer.Builder().nOut(512).activation(Activation.RELU).build(),
                     envInputNames.get(0));
 
         String[] mergeInputs = new String[dependencyInputNames.size() + envInputNames.size()];

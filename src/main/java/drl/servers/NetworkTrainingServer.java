@@ -125,6 +125,19 @@ public class NetworkTrainingServer implements ITrainingServer{
         }
     }
 
+    public void flushQueue() throws Exception{
+        sendData = false;
+        while (sendingData) {
+            Thread.sleep(10);
+        }
+
+        while(!dataMessages.isEmpty()) {
+            this.objectOutput.writeObject(dataMessages.poll());
+        }
+
+        sendData = true;
+    }
+
     private Socket getServerSocket(String url){
         boolean socketed = false;
         int portInd = 0;
