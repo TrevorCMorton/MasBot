@@ -36,8 +36,8 @@ public class MeleeRunner {
         */
 
         //NetworkTrainingServer server = new NetworkTrainingServer("gauss.csse.rose-hulman.edu");
-        ITrainingServer server = new NetworkTrainingServer("localhost");
-        //ITrainingServer server = new NetworkTrainingServer("192.168.3.47");
+        //ITrainingServer server = new NetworkTrainingServer("localhost");
+        ITrainingServer server = new NetworkTrainingServer("192.168.3.47");
         //ITrainingServer server = new NetworkTrainingServer("localhost");
 
         Thread t = new Thread(server);
