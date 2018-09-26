@@ -26,9 +26,11 @@ public class MetaDecisionAgent {
     private AgentDependencyGraph dependencyGraph;
     private String[] outputs;
     private long iters;
+    private double prob;
 
-    public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, boolean build){
+    public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, double prob, boolean build){
         this.dependencyGraph = dependencyGraph;
+        this.prob = prob;
 
         iters = 0;
 
@@ -91,7 +93,7 @@ public class MetaDecisionAgent {
         for(AgentDependencyGraph.Node node : nodes){
             List<String> agentOutputs = node.agent.getOutputNames();
 
-            if(Math.random() * 5000 > iters){
+            if(Math.random() > prob){
                 actions[i] = agentOutputs.get((int)(Math.random() * agentOutputs.size()));
             }
             else {

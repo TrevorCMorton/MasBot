@@ -45,7 +45,7 @@ public class LocalTrainingServer implements ITrainingServer{
         this.connectFromNetwork = connectFromNetwork;
 
         this.dependencyGraph = dependencyGraph;
-        MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph, true);
+        MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph, 0, true);
         this.graph = decisionAgent.getMetaGraph();
         /*
         //Initialize the user interface backend
