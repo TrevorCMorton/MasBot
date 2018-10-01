@@ -10,9 +10,6 @@ import org.nd4j.linalg.factory.Nd4j;
 import drl.servers.DummyTrainingServer;
 import drl.servers.ITrainingServer;
 
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-
 public class MeleeRunner {
 
     public static void main(String[] args) throws Exception{
@@ -37,8 +34,8 @@ public class MeleeRunner {
 
         //NetworkTrainingServer server = new NetworkTrainingServer("gauss.csse.rose-hulman.edu");
         //ITrainingServer server = new NetworkTrainingServer("localhost");
-        ITrainingServer server = new NetworkTrainingServer("192.168.3.47");
-        //ITrainingServer server = new NetworkTrainingServer("localhost");
+        //ITrainingServer server = new NetworkTrainingServer("192.168.3.47");
+        ITrainingServer server = new NetworkTrainingServer("localhost");
 
         Thread t = new Thread(server);
         t.start();
