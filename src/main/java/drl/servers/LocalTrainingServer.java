@@ -23,6 +23,7 @@ import java.net.Socket;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Random;
@@ -34,6 +35,7 @@ public class LocalTrainingServer implements ITrainingServer{
     private AgentDependencyGraph dependencyGraph;
     private MetaDecisionAgent agent;
 
+    private boolean useWeightedTrainingPools;
     private CircularFifoQueue<DataPoint> neutralPoints;
     private CircularFifoQueue<DataPoint> posPoints;
     private CircularFifoQueue<DataPoint> negPoints;
@@ -49,7 +51,7 @@ public class LocalTrainingServer implements ITrainingServer{
     private int iterations;
     private boolean run;
 
-    public LocalTrainingServer(boolean connectFromNetwork, AgentDependencyGraph dependencyGraph, int maxReplaySize, int batchSize, float decayRate){
+    public LocalTrainingServer(boolean connectFromNetwork, AgentDependencyGraph dependencyGraph, int maxReplaySize, int batchSize, float decayRate, boolean useWeightedTrainingPools){
         this.connectFromNetwork = connectFromNetwork;
 
         this.dependencyGraph = dependencyGraph;
@@ -71,6 +73,13 @@ public class LocalTrainingServer implements ITrainingServer{
         this.random = new Random(324);
         this.decayRate = decayRate;
         this.run = true;
+
+        this.useWeightedTrainingPools = useWeightedTrainingPools;
+        this.posPoints = new CircularFifoQueue<>(maxReplaySize);
+        this.posTermPoints = new CircularFifoQueue<>(maxReplaySize);
+        this.negPoints = new CircularFifoQueue<>(maxReplaySize);
+        this.negTermPoints = new CircularFifoQueue<>(maxReplaySize);
+        this.neutralPoints = new CircularFifoQueue<>(maxReplaySize);
     }
 
     public static void main(String[] args) throws Exception{
@@ -86,8 +95,9 @@ public class LocalTrainingServer implements ITrainingServer{
         int replaySize = Integer.parseInt(args[0]);
         int batchSize = Integer.parseInt(args[1]);
         float decayRate = Float.parseFloat(args[2]);
+        boolean useWeightedTrainingPools = Boolean.parseBoolean(args[3]);
 
-        LocalTrainingServer server = new LocalTrainingServer(true, dependencyGraph, replaySize, batchSize, decayRate);
+        LocalTrainingServer server = new LocalTrainingServer(true, dependencyGraph, replaySize, batchSize, decayRate, useWeightedTrainingPools);
 
         File pretrained = new File(server.getModelName());
 
@@ -171,21 +181,46 @@ public class LocalTrainingServer implements ITrainingServer{
     public void run() {
         while(this.run){
             System.out.print("");
-            if (this.dataPoints.size() > this.batchSize /*&& iterations <= pointsGathered*/) {
+            if ((this.useWeightedTrainingPools && (this.neutralPoints.size() + this.negPoints.size() + this.negTermPoints.size() + this.posPoints.size() + this.posTermPoints.size()) >= this.batchSize)
+                || (!this.useWeightedTrainingPools && this.dataPoints.size() > this.batchSize)) {
                 INDArray[][] startStates = new INDArray[this.batchSize][];
                 INDArray[][] endStates = new INDArray[this.batchSize][];
                 INDArray[][] labels = new INDArray[this.batchSize][];
                 INDArray[][] masks = new INDArray[this.batchSize][];
 
-                synchronized (this.dataPoints) {
-                    for (int i = 0; i < this.batchSize; i++) {
-                        int index = this.random.nextInt(this.dataPoints.size());
-                        DataPoint data = this.dataPoints.get(index);
+                if(useWeightedTrainingPools){
+                    ArrayList<CircularFifoQueue<DataPoint>> pools = new ArrayList<>();
+                    pools.add(this.neutralPoints);
+                    pools.add(this.negPoints);
+                    pools.add(this.negTermPoints);
+                    pools.add(this.posPoints);
+                    pools.add(this.posTermPoints);
 
-                        startStates[i] = data.getStartState();
-                        endStates[i] = data.getEndState();
-                        labels[i] = data.getLabels();
-                        masks[i] = data.getMasks();
+                    for(int j = 0; j < pools.size(); j++){
+                        synchronized (pools.get(j)){
+                            for (int i = (this.batchSize / 5) * j; i < (this.batchSize / 5) * (j + 1); i++) {
+                                int index = this.random.nextInt(pools.get(j).size());
+                                DataPoint data = pools.get(j).get(index);
+
+                                startStates[i] = data.getStartState();
+                                endStates[i] = data.getEndState();
+                                labels[i] = data.getLabels();
+                                masks[i] = data.getMasks();
+                            }
+                        }
+                    }
+                }
+                else {
+                    synchronized (this.dataPoints) {
+                        for (int i = 0; i < this.batchSize; i++) {
+                            int index = this.random.nextInt(this.dataPoints.size());
+                            DataPoint data = this.dataPoints.get(index);
+
+                            startStates[i] = data.getStartState();
+                            endStates[i] = data.getEndState();
+                            labels[i] = data.getLabels();
+                            masks[i] = data.getMasks();
+                        }
                     }
                 }
 
@@ -222,8 +257,41 @@ public class LocalTrainingServer implements ITrainingServer{
 
         DataPoint data = new DataPoint(startState, endState, labels, masks);
 
-        synchronized (this.dataPoints) {
-            dataPoints.add(data);
+        if(this.useWeightedTrainingPools){
+            if(score == 0){
+                synchronized (this.neutralPoints) {
+                    this.neutralPoints.add(data);
+                }
+            }
+            else if(score > 0){
+                if(score >= 1){
+                    synchronized (this.posTermPoints) {
+                        this.posTermPoints.add(data);
+                    }
+                }
+                else{
+                    synchronized (this.posPoints) {
+                        this.posPoints.add(data);
+                    }
+                }
+            }
+            else{
+                if(score <= -1){
+                    synchronized (this.negTermPoints) {
+                        this.negTermPoints.add(data);
+                    }
+                }
+                else{
+                    synchronized (this.negPoints) {
+                        this.negPoints.add(data);
+                    }
+                }
+            }
+        }
+        else{
+            synchronized (this.dataPoints) {
+                this.dataPoints.add(data);
+            }
         }
 
         pointsGathered++;
