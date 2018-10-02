@@ -6,3 +6,4 @@ target
 *__pycache__*
 *.mod
 .dolphin-emu
+*.pyc
