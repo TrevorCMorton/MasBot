@@ -29,6 +29,7 @@ public class LocalTrainingServer implements ITrainingServer{
     public static final int[] ports = { 1612, 1613, 1614, 1615, 1616 };
 
     private ComputationGraph graph;
+    private ComputationGraph targetGraph;
     private AgentDependencyGraph dependencyGraph;
     private MetaDecisionAgent agent;
 
@@ -43,17 +44,19 @@ public class LocalTrainingServer implements ITrainingServer{
     private int batchSize;
     private Random random;
     private float decayRate;
+    private int targetRotation;
     private boolean connectFromNetwork;
     private int pointsGathered;
     private int iterations;
     private boolean run;
 
-    public LocalTrainingServer(boolean connectFromNetwork, AgentDependencyGraph dependencyGraph, int maxReplaySize, int batchSize, float decayRate, boolean useWeightedTrainingPools){
+    public LocalTrainingServer(boolean connectFromNetwork, AgentDependencyGraph dependencyGraph, int maxReplaySize, int batchSize, float decayRate, boolean useWeightedTrainingPools, int targetRotation){
         this.connectFromNetwork = connectFromNetwork;
 
         this.dependencyGraph = dependencyGraph;
         this.agent = new MetaDecisionAgent(dependencyGraph, 0, true);
         this.graph = this.agent.getMetaGraph();
+        this.targetGraph = this.getUpdatedNetwork(true);
         /*
         //Initialize the user interface backend
         UIServer uiServer = UIServer.getInstance();
@@ -69,6 +72,7 @@ public class LocalTrainingServer implements ITrainingServer{
         this.batchSize = batchSize;
         this.random = new Random(324);
         this.decayRate = decayRate;
+        this.targetRotation = targetRotation;
         this.run = true;
 
         this.useWeightedTrainingPools = useWeightedTrainingPools;
@@ -93,8 +97,9 @@ public class LocalTrainingServer implements ITrainingServer{
         int batchSize = Integer.parseInt(args[1]);
         float decayRate = Float.parseFloat(args[2]);
         boolean useWeightedTrainingPools = Boolean.parseBoolean(args[3]);
+        int targetRotation = Integer.parseInt(args[4]);
 
-        LocalTrainingServer server = new LocalTrainingServer(true, dependencyGraph, replaySize, batchSize, decayRate, useWeightedTrainingPools);
+        LocalTrainingServer server = new LocalTrainingServer(true, dependencyGraph, replaySize, batchSize, decayRate, useWeightedTrainingPools, targetRotation);
 
         File pretrained = new File(server.getModelName());
 
@@ -249,6 +254,10 @@ public class LocalTrainingServer implements ITrainingServer{
                 graph.fit(dataSet);
 
                 iterations++;
+
+                if(iterations % this.targetRotation == 0){
+                    this.targetGraph = this.getUpdatedNetwork(true);
+                }
             }
             else{
                 try {
@@ -315,6 +324,10 @@ public class LocalTrainingServer implements ITrainingServer{
 
     @Override
     public ComputationGraph getUpdatedNetwork() {
+        return this.getUpdatedNetwork(!this.connectFromNetwork);
+    }
+
+    private ComputationGraph getUpdatedNetwork(boolean clone) {
         try{
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ModelSerializer.writeModel(this.graph, baos, true);
@@ -330,7 +343,7 @@ public class LocalTrainingServer implements ITrainingServer{
             FileOutputStream fout = new FileOutputStream(f);
             fout.write(modelBytes);
 
-            if(connectFromNetwork){
+            if(!clone){
                 return this.graph;
             }
             else {
