@@ -31,11 +31,19 @@ public class MeleeRunner {
         //ITrainingServer server = new LocalTrainingServer(decisionAgent.getMetaGraph(), 10000, 128, .9f);
         ITrainingServer server = new DummyTrainingServer(decisionAgent.getMetaGraph());
         */
+        ITrainingServer server;
 
-        //NetworkTrainingServer server = new NetworkTrainingServer("gauss.csse.rose-hulman.edu");
-        //ITrainingServer server = new NetworkTrainingServer("localhost");
-        //ITrainingServer server = new NetworkTrainingServer("192.168.3.47");
-        ITrainingServer server = new NetworkTrainingServer("localhost");
+        try {
+            //NetworkTrainingServer server = new NetworkTrainingServer("gauss.csse.rose-hulman.edu");
+            //ITrainingServer server = new NetworkTrainingServer("localhost");
+            server = new NetworkTrainingServer("192.168.3.47");
+            //ITrainingServer server = new NetworkTrainingServer("localhost");
+        }
+        catch (Exception e){
+            System.out.println("Could not connect to server");
+            pr.destroy();
+            return;
+        }
 
         Thread t = new Thread(server);
         t.start();
