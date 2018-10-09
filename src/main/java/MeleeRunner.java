@@ -14,7 +14,7 @@ public class MeleeRunner {
 
     public static void main(String[] args) throws Exception{
         //Nd4j.getMemoryManager().togglePeriodicGc(false);
-
+        System.out.println("Launching Emulator");
         Runtime rt = Runtime.getRuntime();
         Process pr = rt.exec("dolphin-emu -e Melee.iso");
 
@@ -31,6 +31,7 @@ public class MeleeRunner {
         //ITrainingServer server = new LocalTrainingServer(decisionAgent.getMetaGraph(), 10000, 128, .9f);
         ITrainingServer server = new DummyTrainingServer(decisionAgent.getMetaGraph());
         */
+        System.out.println("Launching Training Server");
         ITrainingServer server;
 
         try {
