@@ -11,9 +11,9 @@ public class PythonBridge {
     public PythonBridge(){
         Properties prop = System.getProperties();
 
-        prop.setProperty("jpy.jpyLib", System.getProperty("user.dir") + "/jpy-build/lib.linux-x86_64-3.6/jpy.cpython-36m-x86_64-linux-gnu.so");
-        prop.setProperty("jpy.jdlLib", System.getProperty("user.dir") + "/jpy-build/lib.linux-x86_64-3.6/jdl.cpython-36m-x86_64-linux-gnu.so");
-        prop.setProperty("jpy.pythonLib", "/home/trevor/anaconda3/lib/libpython3.6m.so.1.0");
+        //prop.setProperty("jpy.jpyLib", System.getProperty("user.dir") + "/jpy-build/lib.linux-x86_64-3.6/jpy.cpython-36m-x86_64-linux-gnu.so");
+        //prop.setProperty("jpy.jdlLib", System.getProperty("user.dir") + "/jpy-build/lib.linux-x86_64-3.6/jdl.cpython-36m-x86_64-linux-gnu.so");
+        //prop.setProperty("jpy.pythonLib", "/home/trevor/anaconda3/lib/libpython3.6m.so.1.0");
 
         PyLib.startPython();
         PyModule sys = PyModule.importModule("sys");

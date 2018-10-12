@@ -10,11 +10,26 @@ import org.nd4j.linalg.factory.Nd4j;
 import drl.servers.DummyTrainingServer;
 import drl.servers.ITrainingServer;
 
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.util.Properties;
+
 public class MeleeRunner {
 
     public static void main(String[] args) throws Exception{
-        //Nd4j.getMemoryManager().togglePeriodicGc(false);
+        InputStream input = new FileInputStream(args[1]);
+        Properties jpyProps = new Properties();
+        // load a properties file
+        jpyProps.load(input);
 
+        Properties prop = System.getProperties();
+
+        for(String property : jpyProps.stringPropertyNames()){
+            prop.setProperty(property, (String)jpyProps.get(property));
+        }
+
+        //Nd4j.getMemoryManager().togglePeriodicGc(false);
+        System.out.println("Launching Emulator");
         Runtime rt = Runtime.getRuntime();
         Process pr = rt.exec("dolphin-emu -e Melee.iso");
 
@@ -31,11 +46,20 @@ public class MeleeRunner {
         //ITrainingServer server = new LocalTrainingServer(decisionAgent.getMetaGraph(), 10000, 128, .9f);
         ITrainingServer server = new DummyTrainingServer(decisionAgent.getMetaGraph());
         */
+        System.out.println("Launching Training Server");
+        ITrainingServer server;
 
-        //NetworkTrainingServer server = new NetworkTrainingServer("gauss.csse.rose-hulman.edu");
-        //ITrainingServer server = new NetworkTrainingServer("localhost");
-        //ITrainingServer server = new NetworkTrainingServer("192.168.3.47");
-        ITrainingServer server = new NetworkTrainingServer("localhost");
+        try {
+            //server = new NetworkTrainingServer("hinton.csse.rose-hulman.edu");
+            //ITrainingServer server = new NetworkTrainingServer("localhost");
+            //server = new NetworkTrainingServer("192.168.3.47");
+            server = new NetworkTrainingServer("localhost");
+        }
+        catch (Exception e){
+            System.out.println("Could not connect to server");
+            pr.destroy();
+            return;
+        }
 
         Thread t = new Thread(server);
         t.start();
