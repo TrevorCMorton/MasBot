@@ -52,6 +52,11 @@ public class LocalTrainingServer implements ITrainingServer{
 
     public LocalTrainingServer(boolean connectFromNetwork, AgentDependencyGraph dependencyGraph, int maxReplaySize, int batchSize, float decayRate, boolean useWeightedTrainingPools, int targetRotation){
         this.connectFromNetwork = connectFromNetwork;
+        this.dataPoints = new CircularFifoQueue<>(maxReplaySize);
+        this.batchSize = batchSize;
+        this.random = new Random(324);
+        this.decayRate = decayRate;
+        this.targetRotation = targetRotation;
 
         this.dependencyGraph = dependencyGraph;
         this.agent = new MetaDecisionAgent(dependencyGraph, 0, true);
@@ -68,11 +73,7 @@ public class LocalTrainingServer implements ITrainingServer{
         this.graph.setListeners(new StatsListener(statsStorage), new ScoreIterationListener(100));
         */
         this.graph.setListeners(new ScoreIterationListener(100));
-        this.dataPoints = new CircularFifoQueue<>(maxReplaySize);
-        this.batchSize = batchSize;
-        this.random = new Random(324);
-        this.decayRate = decayRate;
-        this.targetRotation = targetRotation;
+
         this.run = true;
 
         this.useWeightedTrainingPools = useWeightedTrainingPools;
@@ -245,7 +246,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
                 DataPoint cumulativeData = new DataPoint(this.concatSet(startStates), this.concatSet(endStates), this.concatSet(labels), this.concatSet(masks));
 
-                INDArray[] curLabels = graph.output(cumulativeData.getEndState());
+                INDArray[] curLabels = targetGraph.output(cumulativeData.getEndState());
 
                 MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(curLabels, decayRate);
 
