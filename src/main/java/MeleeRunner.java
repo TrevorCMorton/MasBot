@@ -5,6 +5,7 @@ import drl.MetaDecisionAgent;
 import drl.servers.LocalTrainingServer;
 import drl.servers.NetworkTrainingServer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.nd4j.jita.conf.CudaEnvironment;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import drl.servers.DummyTrainingServer;
@@ -17,6 +18,11 @@ import java.util.Properties;
 public class MeleeRunner {
 
     public static void main(String[] args) throws Exception{
+        //Nd4j.getMemoryManager().togglePeriodicGc(false);
+        CudaEnvironment.getInstance().getConfiguration()
+                .allowMultiGPU(false)
+                .setMaximumDeviceCache(8L * 1024L * 1024L * 1024L);
+
         InputStream input = new FileInputStream(args[2]);
         Properties jpyProps = new Properties();
         // load a properties file
@@ -30,7 +36,6 @@ public class MeleeRunner {
 
         boolean sendData = Boolean.parseBoolean(args[1]);
 
-        //Nd4j.getMemoryManager().togglePeriodicGc(false);
         System.out.println("Launching Emulator");
         Runtime rt = Runtime.getRuntime();
         Process pr = rt.exec("dolphin-emu -e Melee.iso");
