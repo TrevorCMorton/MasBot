@@ -17,7 +17,7 @@ import java.util.Properties;
 public class MeleeRunner {
 
     public static void main(String[] args) throws Exception{
-        InputStream input = new FileInputStream(args[1]);
+        InputStream input = new FileInputStream(args[2]);
         Properties jpyProps = new Properties();
         // load a properties file
         jpyProps.load(input);
@@ -28,32 +28,21 @@ public class MeleeRunner {
             prop.setProperty(property, (String)jpyProps.get(property));
         }
 
+        boolean sendData = Boolean.parseBoolean(args[1]);
+
         //Nd4j.getMemoryManager().togglePeriodicGc(false);
         System.out.println("Launching Emulator");
         Runtime rt = Runtime.getRuntime();
         Process pr = rt.exec("dolphin-emu -e Melee.iso");
 
-        /*
-        AgentDependencyGraph dependencyGraph = new AgentDependencyGraph();
-
-        IAgent joystickAgent = new MeleeJoystickAgent("M");
-        IAgent cstickAgent = new MeleeJoystickAgent("C");
-        dependencyGraph.addAgent(null, joystickAgent, "M");
-        //dependencyGraph.addAgent(new String[]{"M"}, cstickAgent, "C");
-
-        MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph);
-
-        //ITrainingServer server = new LocalTrainingServer(decisionAgent.getMetaGraph(), 10000, 128, .9f);
-        ITrainingServer server = new DummyTrainingServer(decisionAgent.getMetaGraph());
-        */
         System.out.println("Launching Training Server");
-        ITrainingServer server;
+        NetworkTrainingServer server;
 
         try {
-            //server = new NetworkTrainingServer("hinton.csse.rose-hulman.edu");
+            server = new NetworkTrainingServer("hinton.csse.rose-hulman.edu");
             //ITrainingServer server = new NetworkTrainingServer("localhost");
             //server = new NetworkTrainingServer("192.168.3.47");
-            server = new NetworkTrainingServer("localhost");
+            //server = new NetworkTrainingServer("localhost");
         }
         catch (Exception e){
             System.out.println("Could not connect to server");
@@ -88,20 +77,8 @@ public class MeleeRunner {
         while(true){
             long start = System.currentTimeMillis();
 
-            if(count % 300 == 0){
-                //server.flushQueue();
-
-                System.out.println("Flushing took " + (System.currentTimeMillis() - start) + " ms");
-            }
-
             if (bridge.isPostGame()){
                 break;
-                //ComputationGraph graph = server.getUpdatedNetwork();
-                //decisionAgent.setMetaGraph(graph);
-            }
-
-            while(bridge.isPostGame()){
-                Thread.sleep(10);
             }
 
             INDArray frame = getFrame(bridge, inputBuffer);
@@ -121,7 +98,11 @@ public class MeleeRunner {
                 if(curScore != 0) {
                     System.out.println(curScore);
                 }
-                server.addData(prevState, state, prevActionMask, curScore);
+
+                if(sendData) {
+                    server.addData(prevState, state, prevActionMask, curScore);
+                }
+
                 Thread.sleep(100 - (end - start));
             }
             else{
@@ -134,6 +115,7 @@ public class MeleeRunner {
             count++;
         }
 
+        server.flushQueue();
         pr.destroy();
         //bridge.destroy();
         server.stop();

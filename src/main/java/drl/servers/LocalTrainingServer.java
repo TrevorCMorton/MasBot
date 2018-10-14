@@ -62,16 +62,6 @@ public class LocalTrainingServer implements ITrainingServer{
         this.agent = new MetaDecisionAgent(dependencyGraph, 0, true);
         this.graph = this.agent.getMetaGraph();
         this.targetGraph = this.getUpdatedNetwork(true);
-        /*
-        //Initialize the user interface backend
-        UIServer uiServer = UIServer.getInstance();
-        //Configure where the network information (gradients, score vs. time etc) is to be stored. Here: store in memory.
-        StatsStorage statsStorage = new InMemoryStatsStorage();         //Alternative: new FileStatsStorage(File), for saving and loading later
-        //Attach the StatsStorage instance to the UI: this allows the contents of the StatsStorage to be visualized
-        uiServer.attach(statsStorage);
-        //Then add the StatsListener to collect this information from the network, as it trains
-        this.graph.setListeners(new StatsListener(statsStorage), new ScoreIterationListener(100));
-        */
         this.graph.setListeners(new ScoreIterationListener(100));
 
         this.run = true;
@@ -151,6 +141,9 @@ public class LocalTrainingServer implements ITrainingServer{
                                     }
                                     catch (Exception e){
                                         System.out.println("Error while attempting to upload a data point, point destroyed");
+                                    }
+                                    while(server.iterations < server.pointsGathered){
+                                        Thread.sleep(10);
                                     }
                                     break;
                                 case ("getUpdatedNetwork"):
@@ -249,8 +242,6 @@ public class LocalTrainingServer implements ITrainingServer{
                 INDArray[] curLabels = targetGraph.output(cumulativeData.getEndState());
 
                 MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(curLabels, decayRate);
-
-                graph.getInputs();
 
                 graph.fit(dataSet);
 
