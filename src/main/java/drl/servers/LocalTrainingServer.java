@@ -142,7 +142,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                     catch (Exception e){
                                         System.out.println("Error while attempting to upload a data point, point destroyed");
                                     }
-                                    while(server.iterations < server.pointsGathered){
+                                    while(server.pointsGathered > server.batchSize && server.iterations < server.pointsGathered){
                                         Thread.sleep(10);
                                     }
                                     break;
