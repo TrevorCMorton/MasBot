@@ -12,6 +12,7 @@ import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.stats.StatsListener;
 import org.deeplearning4j.ui.storage.InMemoryStatsStorage;
 import org.deeplearning4j.util.ModelSerializer;
+import org.nd4j.jita.conf.CudaEnvironment;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.nd4j.linalg.dataset.MultiDataSet;
@@ -75,6 +76,10 @@ public class LocalTrainingServer implements ITrainingServer{
     }
 
     public static void main(String[] args) throws Exception{
+        CudaEnvironment.getInstance().getConfiguration()
+                .allowMultiGPU(false)
+                .setMaximumDeviceCache(8L * 1024L * 1024L * 1024L);
+
         AgentDependencyGraph dependencyGraph = new AgentDependencyGraph();
 
         IAgent joystickAgent = new MeleeJoystickAgent("M");
