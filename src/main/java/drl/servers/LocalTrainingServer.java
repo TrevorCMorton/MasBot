@@ -382,6 +382,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
     protected void setGraph(ComputationGraph graph){
         this.graph = graph;
+        this.targetGraph = this.getUpdatedNetwork(true);
         this.graph.setListeners(new ScoreIterationListener(100));
     }
 
