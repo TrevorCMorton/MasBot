@@ -62,7 +62,7 @@ public class LocalTrainingServer implements ITrainingServer{
         this.dependencyGraph = dependencyGraph;
         this.agent = new MetaDecisionAgent(dependencyGraph, 0, true);
         this.graph = this.agent.getMetaGraph();
-        this.targetGraph = this.getUpdatedNetwork(true);
+        this.targetGraph = this.getUpdatedNetwork(targetRotation != 0);
         this.graph.setListeners(new ScoreIterationListener(100));
 
         this.run = true;
@@ -252,7 +252,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
                 iterations++;
 
-                if(iterations % this.targetRotation == 0){
+                if(targetRotation != 0 && iterations % this.targetRotation == 0){
                     this.targetGraph = this.getUpdatedNetwork(true);
                 }
             }
@@ -382,7 +382,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
     protected void setGraph(ComputationGraph graph){
         this.graph = graph;
-        this.targetGraph = this.getUpdatedNetwork(true);
+        this.targetGraph = this.getUpdatedNetwork(this.targetRotation != 0);
         this.graph.setListeners(new ScoreIterationListener(100));
     }
 
