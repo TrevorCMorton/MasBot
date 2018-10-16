@@ -5,6 +5,7 @@ import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
+import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.nd4j.linalg.activations.Activation;
@@ -18,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 
 public class MetaDecisionAgent {
+    public static final int commDepth = 3;
 
     private ComputationGraph metaGraph;
     private AgentDependencyGraph dependencyGraph;
@@ -168,15 +170,34 @@ public class MetaDecisionAgent {
             return node.agent.getInternalOutputNames();
         }
 
-        List<String> dependencyOutputs = new ArrayList<>();
+        List<String> communicationOutputs = new ArrayList<>();
 
         for(AgentDependencyGraph.Node dependency : node.dependencies){
-            dependencyOutputs.addAll(this.buildHelper(dependency, builder, envInputNames));
+            List<String> dependencyOutputs = this.buildHelper(dependency, builder, envInputNames);
+            communicationOutputs.addAll(buildCommunicationUnit(dependencyOutputs, node.agent.getName(), builder));
         }
 
         IAgent nodeAgent = node.agent;
-        List<String> outputs = nodeAgent.build(builder, envInputNames, dependencyOutputs);
+        List<String> outputs = nodeAgent.build(builder, envInputNames, communicationOutputs);
         node.built = true;
         return outputs;
+    }
+
+    private List<String> buildCommunicationUnit(List<String> inputs, String name, ComputationGraphConfiguration.GraphBuilder builder){
+        List<String> commOutputs = new ArrayList<>();
+
+        String[] layerInputs = new String[inputs.size()];
+        inputs.toArray(layerInputs);
+
+        for(int i = 0; i < this.commDepth; i++) {
+            String layerName = name + "Comm" + i;
+            commOutputs.add(layerName);
+            builder.addLayer(layerName,
+                    new DenseLayer.Builder().nOut(inputs.size()).activation(Activation.IDENTITY).build(),
+                    layerInputs);
+            layerInputs = new String[] { layerName };
+        }
+
+        return commOutputs;
     }
 }

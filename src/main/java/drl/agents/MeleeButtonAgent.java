@@ -73,4 +73,9 @@ public class MeleeButtonAgent implements IAgent{
 
         return internalNames;
     }
+
+    @Override
+    public String getName() {
+        return this.name;
+    }
 }

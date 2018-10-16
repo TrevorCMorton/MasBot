@@ -376,6 +376,8 @@ public class LocalTrainingServer implements ITrainingServer{
         sb.append(this.batchSize);
         sb.append("-");
         sb.append(this.decayRate);
+        sb.append("-");
+        sb.append(MetaDecisionAgent.commDepth);
         sb.append(".mod");
         return sb.toString();
     }

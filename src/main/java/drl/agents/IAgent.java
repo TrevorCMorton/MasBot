@@ -12,4 +12,6 @@ public interface IAgent extends Serializable {
     List<String> getOutputNames();
 
     List<String> getInternalOutputNames();
+
+    String getName();
 }
