@@ -65,7 +65,7 @@ public class NetworkTrainingServer implements ITrainingServer{
             return graph;
         }
         catch(Exception e){
-            System.out.println("IT GOOFED");
+            System.out.println("IT GOOFED" + e);
             return null;
         }
     }
@@ -85,7 +85,7 @@ public class NetworkTrainingServer implements ITrainingServer{
             return dependencyGraph;
         }
         catch(Exception e){
-            System.out.println("IT GOOFED");
+            System.out.println("IT GOOFED" + e);
             return null;
         }
     }

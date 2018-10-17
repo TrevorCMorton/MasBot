@@ -78,6 +78,7 @@ public class LocalTrainingServer implements ITrainingServer{
     public static void main(String[] args) throws Exception{
         CudaEnvironment.getInstance().getConfiguration()
                 .allowMultiGPU(false)
+                .allowCrossDeviceAccess(false)
                 .setMaximumDeviceCache(8L * 1024L * 1024L * 1024L);
 
         AgentDependencyGraph dependencyGraph = new AgentDependencyGraph();
@@ -376,6 +377,8 @@ public class LocalTrainingServer implements ITrainingServer{
         sb.append(this.batchSize);
         sb.append("-");
         sb.append(this.decayRate);
+        sb.append("-");
+        sb.append(MetaDecisionAgent.commDepth);
         sb.append(".mod");
         return sb.toString();
     }
