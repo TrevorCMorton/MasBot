@@ -29,12 +29,10 @@ import java.util.*;
 public class LocalTrainingServer implements ITrainingServer{
     public static final int[] ports = { 1612, 1613, 1614, 1615, 1616 };
 
-    private ComputationGraph graph;
-    private ComputationGraph targetGraph;
+    private HashMap<GraphMetadata, ComputationGraph> graphs;
+    private HashMap<GraphMetadata, ComputationGraph>  targetGraphs;
     private AgentDependencyGraph dependencyGraph;
-    private MetaDecisionAgent agent;
 
-    private boolean useWeightedTrainingPools;
     private CircularFifoQueue<DataPoint> neutralPoints;
     private CircularFifoQueue<DataPoint> posPoints;
     private CircularFifoQueue<DataPoint> negPoints;
@@ -42,37 +40,33 @@ public class LocalTrainingServer implements ITrainingServer{
     private CircularFifoQueue<DataPoint> negTermPoints;
 
     private CircularFifoQueue<DataPoint> dataPoints;
+
     private int batchSize;
     private Random random;
-    private float decayRate;
-    private int targetRotation;
     private boolean connectFromNetwork;
     private int pointsGathered;
     private int iterations;
     private boolean run;
 
-    public LocalTrainingServer(boolean connectFromNetwork, AgentDependencyGraph dependencyGraph, int maxReplaySize, int batchSize, float decayRate, boolean useWeightedTrainingPools, int targetRotation){
+    public LocalTrainingServer(boolean connectFromNetwork, int maxReplaySize, int batchSize, AgentDependencyGraph dependencyGraph){
+        this.batchSize = batchSize;
+
         this.connectFromNetwork = connectFromNetwork;
         this.dataPoints = new CircularFifoQueue<>(maxReplaySize);
-        this.batchSize = batchSize;
         this.random = new Random(324);
-        this.decayRate = decayRate;
-        this.targetRotation = targetRotation;
 
         this.dependencyGraph = dependencyGraph;
-        this.agent = new MetaDecisionAgent(dependencyGraph, 0, true);
-        this.graph = this.agent.getMetaGraph();
-        this.targetGraph = this.getUpdatedNetwork(targetRotation != 0);
-        this.graph.setListeners(new ScoreIterationListener(100));
 
         this.run = true;
 
-        this.useWeightedTrainingPools = useWeightedTrainingPools;
         this.posPoints = new CircularFifoQueue<>(maxReplaySize);
         this.posTermPoints = new CircularFifoQueue<>(maxReplaySize);
         this.negPoints = new CircularFifoQueue<>(maxReplaySize);
         this.negTermPoints = new CircularFifoQueue<>(maxReplaySize);
         this.neutralPoints = new CircularFifoQueue<>(maxReplaySize);
+
+        this.graphs = new HashMap<>();
+        this.targetGraphs = new HashMap<>();
     }
 
     public static void main(String[] args) throws Exception{
@@ -91,22 +85,37 @@ public class LocalTrainingServer implements ITrainingServer{
 
         int replaySize = Integer.parseInt(args[0]);
         int batchSize = Integer.parseInt(args[1]);
-        float decayRate = Float.parseFloat(args[2]);
-        boolean useWeightedTrainingPools = Boolean.parseBoolean(args[3]);
-        int targetRotation = Integer.parseInt(args[4]);
+        LocalTrainingServer server = new LocalTrainingServer(true, replaySize, batchSize, dependencyGraph);
 
-        LocalTrainingServer server = new LocalTrainingServer(true, dependencyGraph, replaySize, batchSize, decayRate, useWeightedTrainingPools, targetRotation);
+        InputStream input = new FileInputStream(args[2]);
+        Scanner kb = new Scanner(input);
+        while(kb.hasNext()){
+            String line = kb.nextLine();
+            String[] params = line.split(" ");
 
-        File pretrained = new File(server.getModelName());
+            float decayRate = Float.parseFloat(params[0]);
+            boolean useWeightedTrainingPools = Boolean.parseBoolean(params[1]);
+            int targetRotation = Integer.parseInt(params[2]);
 
-        if(pretrained.exists()){
-            System.out.println("Loading model from file");
-            ComputationGraph model = ModelSerializer.restoreComputationGraph(pretrained, true);
-            server.setGraph(model);
+            GraphMetadata metaData = new GraphMetadata(replaySize, batchSize, decayRate, useWeightedTrainingPools, targetRotation);
+
+            File pretrained = new File(server.getModelName(metaData));
+
+            if(pretrained.exists()){
+                System.out.println("Loading model from file");
+                ComputationGraph model = ModelSerializer.restoreComputationGraph(pretrained, true);
+                server.addGraph(metaData, model);
+            }
+            else{
+                MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, 0, true);
+                server.addGraph(metaData, agent.getMetaGraph());
+                dependencyGraph.resetNodes();
+            }
         }
 
         Thread t = new Thread(server);
         t.start();
+
 
         Queue<Integer> availablePorts = new LinkedList<>();
 
@@ -199,62 +208,81 @@ public class LocalTrainingServer implements ITrainingServer{
             boolean sufficientDataGathered = this.dataPoints.size() > this.batchSize;
 
             if (sufficientDataGathered) {
+                INDArray[][] weightedStartStates = new INDArray[this.batchSize][];
+                INDArray[][] weightedEndStates = new INDArray[this.batchSize][];
+                INDArray[][] weightedLabels = new INDArray[this.batchSize][];
+                INDArray[][] weightedMasks = new INDArray[this.batchSize][];
+
+                int curInd = 0;
+
+                for(int j = 0; j < pools.size(); j++){
+                    synchronized (pools.get(j)){
+                        int endInd = this.batchSize / (pools.size() - j) - curInd > pools.get(j).size() ? curInd + pools.get(j).size() : curInd + this.batchSize / (pools.size() - j) - curInd;
+                        for (int i = curInd; i < endInd; i++) {
+                            int index = this.random.nextInt(pools.get(j).size());
+                            DataPoint data = pools.get(j).get(index);
+
+                            weightedStartStates[i] = data.getStartState();
+                            weightedEndStates[i] = data.getEndState();
+                            weightedLabels[i] = data.getLabels();
+                            weightedMasks[i] = data.getMasks();
+
+                            curInd++;
+                        }
+                    }
+                }
+
+                DataPoint weightedCumulativeData = new DataPoint(this.concatSet(weightedStartStates), this.concatSet(weightedEndStates), this.concatSet(weightedLabels), this.concatSet(weightedMasks));
+
+                if(this.iterations % 100 == 0){
+                    System.out.println(this.neutralPoints.size() + " " + this.negPoints.size() + " " + this.negTermPoints.size() + " " + this.posPoints.size() + " " + this.posTermPoints.size());
+                }
+
                 INDArray[][] startStates = new INDArray[this.batchSize][];
                 INDArray[][] endStates = new INDArray[this.batchSize][];
                 INDArray[][] labels = new INDArray[this.batchSize][];
                 INDArray[][] masks = new INDArray[this.batchSize][];
 
-                if(useWeightedTrainingPools){
-                    int curInd = 0;
+                synchronized (this.dataPoints) {
+                    for (int i = 0; i < this.batchSize; i++) {
+                        int index = this.random.nextInt(this.dataPoints.size());
+                        DataPoint data = this.dataPoints.get(index);
 
-                    for(int j = 0; j < pools.size(); j++){
-                        synchronized (pools.get(j)){
-                            int endInd = this.batchSize / (pools.size() - j) - curInd > pools.get(j).size() ? curInd + pools.get(j).size() : curInd + this.batchSize / (pools.size() - j) - curInd;
-                            for (int i = curInd; i < endInd; i++) {
-                                int index = this.random.nextInt(pools.get(j).size());
-                                DataPoint data = pools.get(j).get(index);
-
-                                startStates[i] = data.getStartState();
-                                endStates[i] = data.getEndState();
-                                labels[i] = data.getLabels();
-                                masks[i] = data.getMasks();
-
-                                curInd++;
-                            }
-                        }
-                    }
-
-                    if(this.iterations % 100 == 0){
-                        System.out.println(this.neutralPoints.size() + " " + this.negPoints.size() + " " + this.negTermPoints.size() + " " + this.posPoints.size() + " " + this.posTermPoints.size());
-                    }
-                }
-                else {
-                    synchronized (this.dataPoints) {
-                        for (int i = 0; i < this.batchSize; i++) {
-                            int index = this.random.nextInt(this.dataPoints.size());
-                            DataPoint data = this.dataPoints.get(index);
-
-                            startStates[i] = data.getStartState();
-                            endStates[i] = data.getEndState();
-                            labels[i] = data.getLabels();
-                            masks[i] = data.getMasks();
-                        }
+                        startStates[i] = data.getStartState();
+                        endStates[i] = data.getEndState();
+                        labels[i] = data.getLabels();
+                        masks[i] = data.getMasks();
                     }
                 }
 
                 DataPoint cumulativeData = new DataPoint(this.concatSet(startStates), this.concatSet(endStates), this.concatSet(labels), this.concatSet(masks));
 
-                INDArray[] curLabels = targetGraph.output(cumulativeData.getEndState());
+                for(GraphMetadata metaData : this.graphs.keySet()) {
+                    ComputationGraph graph = this.graphs.get(metaData);
+                    ComputationGraph targetGraph = this.targetGraphs.get(metaData);
 
-                MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(curLabels, decayRate);
+                    if(metaData.weightedPools) {
+                        INDArray[] curLabels = targetGraph.output(weightedCumulativeData.getEndState());
+                        MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(curLabels, metaData.decayRate);
+                        graph.fit(dataSet);
+                    }
+                    else{
+                        INDArray[] curLabels = targetGraph.output(cumulativeData.getEndState());
+                        MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(curLabels, metaData.decayRate);
+                        graph.fit(dataSet);
+                    }
 
-                graph.fit(dataSet);
+                    if (metaData.targetRotation != 0 && iterations % metaData.targetRotation == 0) {
+                        this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true, false));
+                    }
+                    else if(metaData.targetRotation == 0){
+                        this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, false, false));
+                    }
+                }
 
                 iterations++;
 
-                if(targetRotation != 0 && iterations % this.targetRotation == 0){
-                    this.targetGraph = this.getUpdatedNetwork(true);
-                }
+
             }
             else{
                 try {
@@ -277,34 +305,32 @@ public class LocalTrainingServer implements ITrainingServer{
 
         DataPoint data = new DataPoint(startState, endState, labels, masks);
 
-        if(this.useWeightedTrainingPools){
-            if(score == 0){
-                synchronized (this.neutralPoints) {
-                    this.neutralPoints.add(data);
-                }
+        if(score == 0){
+            synchronized (this.neutralPoints) {
+                this.neutralPoints.add(data);
             }
-            else if(score > 0){
-                if(score >= 1){
-                    synchronized (this.posTermPoints) {
-                        this.posTermPoints.add(data);
-                    }
-                }
-                else{
-                    synchronized (this.posPoints) {
-                        this.posPoints.add(data);
-                    }
+        }
+        else if(score > 0){
+            if(score >= 1){
+                synchronized (this.posTermPoints) {
+                    this.posTermPoints.add(data);
                 }
             }
             else{
-                if(score <= -1){
-                    synchronized (this.negTermPoints) {
-                        this.negTermPoints.add(data);
-                    }
+                synchronized (this.posPoints) {
+                    this.posPoints.add(data);
                 }
-                else{
-                    synchronized (this.negPoints) {
-                        this.negPoints.add(data);
-                    }
+            }
+        }
+        else{
+            if(score <= -1){
+                synchronized (this.negTermPoints) {
+                    this.negTermPoints.add(data);
+                }
+            }
+            else{
+                synchronized (this.negPoints) {
+                    this.negPoints.add(data);
                 }
             }
         }
@@ -321,27 +347,35 @@ public class LocalTrainingServer implements ITrainingServer{
 
     @Override
     public ComputationGraph getUpdatedNetwork() {
-        return this.getUpdatedNetwork(!this.connectFromNetwork);
+        Iterator<GraphMetadata> iterator = graphs.keySet().iterator();
+        GraphMetadata randomData = iterator.next();
+        for(int i = 1; i < this.random.nextInt(graphs.size()); i++){
+            randomData = iterator.next();
+        }
+        return this.getUpdatedNetwork(randomData, !this.connectFromNetwork, true);
     }
 
-    private ComputationGraph getUpdatedNetwork(boolean clone) {
+    private ComputationGraph getUpdatedNetwork(GraphMetadata metaData, boolean clone, boolean overwrite) {
         try{
+            ComputationGraph graph = this.graphs.get(metaData);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ModelSerializer.writeModel(this.graph, baos, true);
+            ModelSerializer.writeModel(graph, baos, true);
 
             byte[] modelBytes = baos.toByteArray();
 
-            File f = new File(this.getModelName());
+            if(overwrite) {
+                File f = new File(this.getModelName(metaData));
 
-            if(f.exists()){
-                f.delete();
+                if (f.exists()) {
+                    f.delete();
+                }
+
+                FileOutputStream fout = new FileOutputStream(f);
+                fout.write(modelBytes);
             }
 
-            FileOutputStream fout = new FileOutputStream(f);
-            fout.write(modelBytes);
-
             if(!clone){
-                return this.graph;
+                return graph;
             }
             else {
                 ByteArrayInputStream bais = new ByteArrayInputStream(modelBytes);
@@ -364,28 +398,22 @@ public class LocalTrainingServer implements ITrainingServer{
         this.run  = false;
     }
 
-    protected String getModelName(){
+    protected String getModelName(GraphMetadata metaData){
         StringBuilder sb = new StringBuilder();
         sb.append("model-");
-        for(String output : this.agent.getOutputNames()){
-            sb.append(output);
-            sb.append("-");
-        }
-        sb.append(dataPoints.maxSize());
-        sb.append("-");
-        sb.append(this.batchSize);
-        sb.append("-");
-        sb.append(this.decayRate);
-        sb.append("-");
-        sb.append(MetaDecisionAgent.commDepth);
+        //for(String output : this.agent.getOutputNames()){
+        //    sb.append(output);
+        //    sb.append("-");
+        //}
+        sb.append(metaData.getName());
         sb.append(".mod");
         return sb.toString();
     }
 
-    protected void setGraph(ComputationGraph graph){
-        this.graph = graph;
-        this.targetGraph = this.getUpdatedNetwork(this.targetRotation != 0);
-        this.graph.setListeners(new ScoreIterationListener(100));
+    protected void addGraph(GraphMetadata metaData, ComputationGraph graph){
+        this.graphs.put(metaData, graph);
+        this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, metaData.targetRotation != 0, false));
+        this.graphs.get(metaData).setListeners(new ScoreIterationListener(100));
     }
 
     private INDArray[] concatSet(INDArray[][] set){

@@ -36,6 +36,13 @@ public class AgentDependencyGraph implements Serializable {
         return this.agentNodes.values();
     }
 
+    public void resetNodes(){
+        for(String nodeName : agentNodes.keySet()){
+            Node node = agentNodes.get(nodeName);
+            node.built = false;
+        }
+    }
+
     public class Node implements Serializable{
         public IAgent agent;
         public List<Node> dependents;
