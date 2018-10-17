@@ -101,7 +101,7 @@ public class MeleeRunner {
             INDArray[] mask = decisionAgent.getOutputMask(results);
 
             long end = System.currentTimeMillis();
-            execTime += end;
+            execTime += (end - start);
             if(end - start < 100) {
                 if(curScore != 0) {
                     System.out.println(curScore);
