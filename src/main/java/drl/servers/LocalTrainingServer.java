@@ -276,13 +276,13 @@ public class LocalTrainingServer implements ITrainingServer{
                     if (metaData.targetRotation != 0 && iterations % metaData.targetRotation == 0) {
                         this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true, false));
                     }
-                    else if(metaData.targetRotation == 0){
-                        this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, false, false));
+
+                    if(iterations % 100 == 0){
+                        System.out.println(metaData.getName());
                     }
                 }
 
                 iterations++;
-
 
             }
             else{
