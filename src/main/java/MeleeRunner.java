@@ -21,6 +21,7 @@ public class MeleeRunner {
         //Nd4j.getMemoryManager().togglePeriodicGc(false);
         CudaEnvironment.getInstance().getConfiguration()
                 .allowMultiGPU(false)
+                .allowCrossDeviceAccess(false)
                 .setMaximumDeviceCache(8L * 1024L * 1024L * 1024L);
 
         InputStream input = new FileInputStream(args[2]);
@@ -78,6 +79,7 @@ public class MeleeRunner {
         INDArray[] prevState = new INDArray[]{ emptyFrame, Nd4j.concat(1, prevActionMask) };
 
         long count = 0;
+        long execTime = 0;
 
         while(true){
             long start = System.currentTimeMillis();
@@ -99,6 +101,7 @@ public class MeleeRunner {
             INDArray[] mask = decisionAgent.getOutputMask(results);
 
             long end = System.currentTimeMillis();
+            execTime += end;
             if(end - start < 100) {
                 if(curScore != 0) {
                     System.out.println(curScore);
@@ -119,6 +122,8 @@ public class MeleeRunner {
 
             count++;
         }
+
+        System.out.println("Average execution time was " + (execTime / count));
 
         server.flushQueue();
         pr.destroy();
