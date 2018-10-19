@@ -31,7 +31,7 @@ public class DataPoint {
             terminal = terminal.add(abs(cur)).add(abs(terminal.sub(abs(cur)))).mul(1 / 2);
         }
 
-        terminal = not(greaterThanOrEqual(terminal, Nd4j.ones()));
+        terminal = not(greaterThanOrEqual(terminal, Nd4j.ones(terminal.shape())));
 
         for(int i = 0; i < this.labels.length; i++){
             qOffsetLabels[i] = this.labels[i].add(max.mul(terminal));
