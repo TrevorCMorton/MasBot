@@ -191,9 +191,10 @@ public class MetaDecisionAgent {
 
         for(int i = 0; i < this.commDepth; i++) {
             String layerName = name + "Comm" + i;
+            int nodeCount = -((inputs.size() - 1) / (this.commDepth - 1)) * i + inputs.size();
             commOutputs.add(layerName);
             builder.addLayer(layerName,
-                    new DenseLayer.Builder().nOut(inputs.size()).activation(Activation.IDENTITY).build(),
+                    new DenseLayer.Builder().nOut(nodeCount).activation(Activation.IDENTITY).build(),
                     layerInputs);
             layerInputs = new String[] { layerName };
         }
