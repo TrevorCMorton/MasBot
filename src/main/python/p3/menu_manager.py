@@ -11,6 +11,8 @@ class MenuManager:
         self.rules_set = True
         self.menu_count = 0
         self.start_frame = -1
+        self.map_frames = 0
+        self.map_moves = 0
 
     def set_rules(self, state, pad):
         if self.rules_set:
@@ -100,6 +102,17 @@ class MenuManager:
             else:
                 pad.tilt_stick(p3.pad.Stick.MAIN, 0.5 * (dx / mag) + 0.5, 0.5 * (dy / mag) + 0.5)
             return False
+
+    def pick_map(self, state, pad):
+        print(self.map_frames)
+        if self.map_moves < 20 and self.map_frames % 10 == 0:
+            pad.tilt_stick(p3.pad.Stick.MAIN, .7, .7)
+            self.map_moves += 1
+        else:
+            pad.reset()
+        self.map_frames += 1
+        if self.map_moves >= 20:
+            return True
 
     def press_start_lots(self, state, pad):
         if state.frame % 2 == 0:

@@ -66,7 +66,8 @@ class P4:
                         mm.press_start_lots(state, pad)
             return False
         elif state.menu == p3.state.Menu.Stages:
-            mm.press_start_lots(state, pad)
+            if mm.pick_map(state, pad):
+                mm.press_start_lots(state, pad)
             return False
         elif state.menu == p3.state.Menu.PostGame:
             mm.press_start_lots(state, pad)
