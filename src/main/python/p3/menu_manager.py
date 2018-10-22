@@ -1,4 +1,5 @@
 import math
+from numpy import random
 
 import p3.pad
 
@@ -13,6 +14,8 @@ class MenuManager:
         self.start_frame = -1
         self.map_frames = 0
         self.map_moves = 0
+        self.clicked_level = False
+        self.picked_level = False
 
     def set_rules(self, state, pad):
         if self.rules_set:
@@ -102,6 +105,38 @@ class MenuManager:
             else:
                 pad.tilt_stick(p3.pad.Stick.MAIN, 0.5 * (dx / mag) + 0.5, 0.5 * (dy / mag) + 0.5)
             return False
+
+    def set_level(self, state, pad, level):
+        if self.picked_level:
+            pad.release_button(p3.pad.Button.A)
+            return True
+        elif self.clicked_level:
+            # move cursor proper amount
+            target_x = -15.5 + (level - 1)
+            target_y = -15
+            dx = target_x - state.players[2].cursor_x
+            dy = target_y - state.players[2].cursor_y
+            mag = math.sqrt(dx * dx + dy * dy)
+            if mag < .7:
+                pad.press_button(p3.pad.Button.A)
+                self.picked_level = True
+            else:
+                pad.tilt_stick(p3.pad.Stick.MAIN, 0.5 * (dx / mag) + 0.5, 0.5 * (dy / mag) + 0.5)
+            return False
+        else:
+            # Go to level selector and press A
+            target_x = -15.5
+            target_y = -15
+            dx = target_x - state.players[2].cursor_x
+            dy = target_y - state.players[2].cursor_y
+            mag = math.sqrt(dx * dx + dy * dy)
+            if mag < 1:
+                pad.press_button(p3.pad.Button.A)
+                self.clicked_level = True
+            else:
+                pad.tilt_stick(p3.pad.Stick.MAIN, 0.5 * (dx / mag) + 0.5, 0.5 * (dy / mag) + 0.5)
+            return False
+
 
     def pick_map(self, state, pad):
         print(self.map_frames)

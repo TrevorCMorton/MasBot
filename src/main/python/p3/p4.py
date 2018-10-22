@@ -23,6 +23,7 @@ class P4:
         self.post_game = False
         self.restarting = False
         self.frame = None
+        self.cpu_level = 0
 
     def find_dolphin_dir(self):
         """Attempts to find the dolphin user directory. None on failure."""
@@ -63,7 +64,8 @@ class P4:
             if mm.pick_cpu(state, pad):
                 if mm.pick_fox(state, pad):
                     if mm.set_rules(state, pad):
-                        mm.press_start_lots(state, pad)
+                        if mm.set_level(state, pad, self.cpu_level):
+                            mm.press_start_lots(state, pad)
             return False
         elif state.menu == p3.state.Menu.Stages:
             if mm.pick_map(state, pad):
@@ -78,6 +80,9 @@ class P4:
         if self.dolphin_dir is None:
             print('Could not find dolphin config dir.')
             return
+
+        if self.cpu_level == 0:
+            self.cpu_level = np.random.choice(range(1, 10))
 
         game_state = p3.state.State()
         sm = p3.state_manager.StateManager(game_state)
