@@ -24,11 +24,10 @@ public class DataPoint {
         INDArray[] qOffsetLabels = new INDArray[this.labels.length];
 
         INDArray max = currentLabels[0];
-        INDArray terminal = abs(currentLabels[0]);
+        INDArray terminal = abs(this.labels[0]);
         for(int i = 1; i < currentLabels.length; i++){
-            INDArray cur = currentLabels[i];
-            max = max.add(cur).add(abs(max.sub(cur))).mul(1 / 2);
-            terminal = terminal.add(abs(cur)).add(abs(terminal.sub(abs(cur)))).mul(1 / 2);
+            max = max.add(currentLabels[i]).add(abs(max.sub(currentLabels[i]))).mul(.5);
+            terminal = terminal.add(abs(this.labels[i])).add(abs(terminal.sub(abs(this.labels[i])))).mul(.5);
         }
 
         terminal = not(greaterThanOrEqual(terminal, Nd4j.ones(terminal.shape())));
