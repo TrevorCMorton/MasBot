@@ -3,6 +3,7 @@ package drl;
 import drl.agents.IAgent;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.Updater;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
@@ -33,11 +34,14 @@ public class MetaDecisionAgent {
 
         iters = 0;
 
+        Nesterovs updater = new Nesterovs(.1);
+        updater.setLearningRate(.0001);
+
         ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
             .seed(123)
             .l2(0.0005)
             .weightInit(WeightInit.XAVIER)
-            .updater(new Nesterovs(.1))
+            .updater(updater)
             .graphBuilder();
 
         Collection<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getNodes();
