@@ -33,7 +33,7 @@ public class DataPoint {
         terminal = not(greaterThanOrEqual(terminal, Nd4j.ones(terminal.shape())));
 
         for(int i = 0; i < this.labels.length; i++){
-            qOffsetLabels[i] = this.labels[i].add(max.mul(terminal));
+            qOffsetLabels[i] = this.labels[i].add(max.mul(terminal).mul(decayRate));
         }
 
         return new MultiDataSet(this.startState, qOffsetLabels, null, masks);
