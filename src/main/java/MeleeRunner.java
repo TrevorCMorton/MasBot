@@ -20,8 +20,8 @@ public class MeleeRunner {
     public static void main(String[] args) throws Exception{
         //Nd4j.getMemoryManager().togglePeriodicGc(false);
         CudaEnvironment.getInstance().getConfiguration()
-                .allowMultiGPU(false)
-                .allowCrossDeviceAccess(false)
+                .allowMultiGPU(true)
+                .allowCrossDeviceAccess(true)
                 .setMaximumDeviceCache(8L * 1024L * 1024L * 1024L);
 
         InputStream input = new FileInputStream(args[2]);

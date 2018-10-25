@@ -61,8 +61,8 @@ public class LocalTrainingServer implements ITrainingServer{
 
     public static void main(String[] args) throws Exception{
         CudaEnvironment.getInstance().getConfiguration()
-                .allowMultiGPU(false)
-                .allowCrossDeviceAccess(false)
+                .allowMultiGPU(true)
+                .allowCrossDeviceAccess(true)
                 .setMaximumDeviceCache(8L * 1024L * 1024L * 1024L);
 
         AgentDependencyGraph dependencyGraph = new AgentDependencyGraph();
