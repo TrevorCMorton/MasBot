@@ -21,6 +21,7 @@ public class MeleeRunner {
         //Nd4j.getMemoryManager().togglePeriodicGc(false);
         CudaEnvironment.getInstance().getConfiguration()
                 .allowMultiGPU(true)
+                .useDevice(0)
                 .allowCrossDeviceAccess(true)
                 .setMaximumDeviceCache(8L * 1024L * 1024L * 1024L);
 
