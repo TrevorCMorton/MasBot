@@ -60,7 +60,7 @@ public class MeleeRunner {
         t.start();
 
         AgentDependencyGraph dependencyGraph = server.getDependencyGraph();
-        MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph, Double.parseDouble(args[0]), false);
+        MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph, Double.parseDouble(args[0]), false, 0);
         decisionAgent.setMetaGraph(server.getUpdatedNetwork());
 
         PythonBridge bridge = new PythonBridge();

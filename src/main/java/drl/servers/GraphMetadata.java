@@ -6,14 +6,14 @@ public class GraphMetadata {
     int replaySize;
     int batchSize;
     float decayRate;
-    boolean weightedPools;
+    int commDepth;
     int targetRotation;
 
-    public GraphMetadata(int replaySize, int batchSize, float decayRate, boolean weightedPools, int targetRotation){
+    public GraphMetadata(int replaySize, int batchSize, float decayRate, int commDepth, int targetRotation){
         this.replaySize = replaySize;
         this.batchSize = batchSize;
         this.decayRate = decayRate;
-        this.weightedPools = weightedPools;
+        this.commDepth = commDepth;
         this.targetRotation = targetRotation;
     }
 
@@ -25,11 +25,9 @@ public class GraphMetadata {
         sb.append("-");
         sb.append(this.decayRate);
         sb.append("-");
-        sb.append(this.weightedPools);
-        sb.append("-");
         sb.append(this.targetRotation);
         sb.append("-");
-        sb.append(MetaDecisionAgent.commDepth);
+        sb.append(this.commDepth);
         return sb.toString();
     }
 }

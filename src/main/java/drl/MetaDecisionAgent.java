@@ -20,17 +20,17 @@ import java.util.HashMap;
 import java.util.List;
 
 public class MetaDecisionAgent {
-    public static final int commDepth = 3;
-
     private ComputationGraph metaGraph;
     private AgentDependencyGraph dependencyGraph;
     private String[] outputs;
     private long iters;
     private double prob;
+    private int commDepth;
 
-    public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, double prob, boolean build){
+    public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, double prob, boolean build, int commDepth){
         this.dependencyGraph = dependencyGraph;
         this.prob = prob;
+        this.commDepth = commDepth;
 
         iters = 0;
 

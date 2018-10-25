@@ -20,20 +20,11 @@ public class DataPoint {
         this.masks = masks;
     }
 
-    public MultiDataSet getDataSetWithQOffset(INDArray[] currentLabels, float decayRate){
+    public MultiDataSet getDataSetWithQOffset(INDArray targetMax, float decayRate){
         INDArray[] qOffsetLabels = new INDArray[this.labels.length];
 
-        INDArray max = currentLabels[0];
-        INDArray terminal = abs(this.labels[0]);
-        for(int i = 1; i < currentLabels.length; i++){
-            max = max.add(currentLabels[i]).add(abs(max.sub(currentLabels[i]))).mul(.5);
-            terminal = terminal.add(abs(this.labels[i])).add(abs(terminal.sub(abs(this.labels[i])))).mul(.5);
-        }
-
-        terminal = not(greaterThanOrEqual(terminal, Nd4j.ones(terminal.shape())));
-
         for(int i = 0; i < this.labels.length; i++){
-            INDArray propReward = max.mul(terminal).mul(decayRate);
+            INDArray propReward = targetMax.mul(decayRate);
             INDArray newLabel = this.labels[i].add(propReward);
             qOffsetLabels[i] = newLabel;
         }
