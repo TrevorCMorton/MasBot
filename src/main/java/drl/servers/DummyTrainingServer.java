@@ -11,7 +11,7 @@ public class DummyTrainingServer implements ITrainingServer {
 
     public DummyTrainingServer(AgentDependencyGraph dependencyGraph) {
         this.agentDependencyGraph = dependencyGraph;
-        MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, .5, true);
+        MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, .5, true, 3);
         this.graph = agent.getMetaGraph();
     }
 
