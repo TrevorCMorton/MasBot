@@ -12,7 +12,8 @@ import time
 
 
 class P4:
-    def __init__(self):
+    def __init__(self, setup):
+        self.setup = setup
         self.selected_fox = False
         self.selected_cpu = False
         self.setup_cpu = False
@@ -61,11 +62,15 @@ class P4:
             pad.reset()
             return True
         elif state.menu == p3.state.Menu.Characters:
-            if mm.pick_cpu(state, pad):
+            if self.setup:
+                if mm.pick_cpu(state, pad):
+                    if mm.pick_fox(state, pad):
+                        if mm.set_rules(state, pad):
+                            if mm.set_level(state, pad, self.cpu_level):
+                                mm.press_start_lots(state, pad)
+            else:
                 if mm.pick_fox(state, pad):
-                    if mm.set_rules(state, pad):
-                        if mm.set_level(state, pad, self.cpu_level):
-                            mm.press_start_lots(state, pad)
+                    return False
             return False
         elif state.menu == p3.state.Menu.Stages:
             if mm.pick_map(state, pad):

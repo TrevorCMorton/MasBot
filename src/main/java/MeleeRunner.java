@@ -16,6 +16,7 @@ import java.io.InputStream;
 import java.util.Properties;
 
 public class MeleeRunner {
+    public static final int loopTime = 100;
 
     public static void main(String[] args) throws Exception{
         //Nd4j.getMemoryManager().togglePeriodicGc(false);
@@ -63,7 +64,7 @@ public class MeleeRunner {
         MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph, Double.parseDouble(args[0]), false);
         decisionAgent.setMetaGraph(server.getUpdatedNetwork());
 
-        PythonBridge bridge = new PythonBridge();
+        PythonBridge bridge = new PythonBridge(Boolean.parseBoolean(args[3]));
         bridge.start();
 
         float[][] inputBuffer = new float[4][];
@@ -102,7 +103,7 @@ public class MeleeRunner {
 
             long end = System.currentTimeMillis();
             execTime += (end - start);
-            if(end - start < 100) {
+            if(end - start < MeleeRunner.loopTime) {
                 if(curScore != 0) {
                     System.out.println(curScore);
                 }
@@ -111,7 +112,7 @@ public class MeleeRunner {
                     server.addData(prevState, state, prevActionMask, curScore);
                 }
 
-                Thread.sleep(100 - (end - start));
+                Thread.sleep(MeleeRunner.loopTime - (end - start));
             }
             else{
                 System.out.println((end - start)  + " ms ");

@@ -8,7 +8,7 @@ import java.util.Properties;
 public class PythonBridge {
     P4 p4;
 
-    public PythonBridge(){
+    public PythonBridge(boolean autoSetup){
         Properties prop = System.getProperties();
 
         //prop.setProperty("jpy.jpyLib", System.getProperty("user.dir") + "/jpy-build/lib.linux-x86_64-3.6/jpy.cpython-36m-x86_64-linux-gnu.so");
@@ -24,7 +24,7 @@ public class PythonBridge {
 
         PyModule.importModule("p3");
         PyModule p4Module = PyModule.importModule("p3.p4");
-        PyObject plugInObj = p4Module.call("P4");
+        PyObject plugInObj = p4Module.call("P4", autoSetup);
         this.p4 = plugInObj.createProxy(P4.class);
     }
 

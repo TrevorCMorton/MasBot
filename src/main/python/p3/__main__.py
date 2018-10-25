@@ -2,7 +2,7 @@ import p3.p4
 import time
 import cv2
 
-call = p3.p4.P4()
+call = p3.p4.P4(True)
 call.start()
 while True:
     start = time.time()
