@@ -12,7 +12,9 @@ import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.stats.StatsListener;
 import org.deeplearning4j.ui.storage.InMemoryStatsStorage;
 import org.deeplearning4j.util.ModelSerializer;
+import org.nd4j.jita.concurrency.CudaAffinityManager;
 import org.nd4j.jita.conf.CudaEnvironment;
+import org.nd4j.linalg.api.concurrency.AffinityManager;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.nd4j.linalg.dataset.MultiDataSet;
@@ -61,9 +63,6 @@ public class LocalTrainingServer implements ITrainingServer{
 
     public static void main(String[] args) throws Exception{
         CudaEnvironment.getInstance().getConfiguration()
-                .allowMultiGPU(true)
-                .allowCrossDeviceAccess(true)
-                .useDevice(0)
                 .setMaximumDeviceCache(8L * 1024L * 1024L * 1024L);
 
         AgentDependencyGraph dependencyGraph = new AgentDependencyGraph();
@@ -78,6 +77,8 @@ public class LocalTrainingServer implements ITrainingServer{
         int replaySize = Integer.parseInt(args[0]);
         int batchSize = Integer.parseInt(args[1]);
         LocalTrainingServer server = new LocalTrainingServer(true, replaySize, batchSize, dependencyGraph);
+
+        CudaEnvironment.getInstance().getConfiguration().useDevice(0);
 
         InputStream input = new FileInputStream(args[2]);
         Scanner kb = new Scanner(input);
@@ -107,7 +108,6 @@ public class LocalTrainingServer implements ITrainingServer{
 
         Thread t = new Thread(server);
         t.start();
-
 
         Queue<Integer> availablePorts = new LinkedList<>();
 

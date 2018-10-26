@@ -20,11 +20,6 @@ public class MeleeRunner {
 
     public static void main(String[] args) throws Exception{
         //Nd4j.getMemoryManager().togglePeriodicGc(false);
-        CudaEnvironment.getInstance().getConfiguration()
-                .allowMultiGPU(true)
-                .useDevice(0)
-                .allowCrossDeviceAccess(true)
-                .setMaximumDeviceCache(8L * 1024L * 1024L * 1024L);
 
         InputStream input = new FileInputStream(args[2]);
         Properties jpyProps = new Properties();
@@ -60,6 +55,8 @@ public class MeleeRunner {
 
         Thread t = new Thread(server);
         t.start();
+
+        CudaEnvironment.getInstance().getConfiguration().useDevice(0);
 
         AgentDependencyGraph dependencyGraph = server.getDependencyGraph();
         MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph, Double.parseDouble(args[0]), false, 0);
