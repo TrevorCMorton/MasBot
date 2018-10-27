@@ -36,6 +36,7 @@ public class LocalTrainingServer implements ITrainingServer{
     private HashMap<GraphMetadata, ComputationGraph> graphs;
     private HashMap<GraphMetadata, ComputationGraph>  targetGraphs;
     private AgentDependencyGraph dependencyGraph;
+    private String[] outputs;
 
     private CircularFifoQueue<DataPoint> dataPoints;
 
@@ -78,8 +79,6 @@ public class LocalTrainingServer implements ITrainingServer{
         int batchSize = Integer.parseInt(args[1]);
         LocalTrainingServer server = new LocalTrainingServer(true, replaySize, batchSize, dependencyGraph);
 
-        CudaEnvironment.getInstance().getConfiguration().useDevice(0);
-
         InputStream input = new FileInputStream(args[2]);
         Scanner kb = new Scanner(input);
         while(kb.hasNext()){
@@ -105,6 +104,9 @@ public class LocalTrainingServer implements ITrainingServer{
                 dependencyGraph.resetNodes();
             }
         }
+
+        MetaDecisionAgent outputsAgent = new MetaDecisionAgent(dependencyGraph, 0, true, 3);
+        server.outputs = outputsAgent.getOutputNames();
 
         Thread t = new Thread(server);
         t.start();
@@ -213,22 +215,36 @@ public class LocalTrainingServer implements ITrainingServer{
                     INDArray[] curLabels = graph.output(cumulativeData.getEndState());
                     INDArray[] targetLabels = targetGraph.output(cumulativeData.getEndState());
 
-                    INDArray max = curLabels[0];
-                    for(int i = 1; i < curLabels.length; i++){
-                        max = max.add(curLabels[i]).add(abs(max.sub(curLabels[i]))).mul(.5);
+                    INDArray[] targetMaxs = new INDArray[curLabels.length];
+
+                    for(ArrayList<Integer> inds : this.dependencyGraph.getAgentInds(this.outputs)){
+                        int concatInd = 0;
+                        INDArray[] curIndLabels = new INDArray[inds.size()];
+                        for(int i : inds){
+                            curIndLabels[concatInd] = curLabels[i];
+                            concatInd++;
+                            //max = max.add(curLabels[i]).add(abs(max.sub(curLabels[i]))).mul(.5);
+                        }
+                        INDArray max = Nd4j.concat(1, curIndLabels);
+                        max = Nd4j.max(max, 1);
+
+                        //BUG: .eq does not return 1 for all the correct values because the float values are changed too much in the max func
+                        INDArray[] maxBools = new INDArray[curLabels.length];
+                        for(int i : inds){
+                            maxBools[i] = curLabels[i].eq(max);
+                        }
+
+                        INDArray targetMax = Nd4j.zeros(targetLabels[0].shape());
+                        for(int i : inds){
+                            targetMax = targetMax.add(maxBools[i].mul(targetLabels[i]));
+                        }
+
+                        for(int i : inds){
+                            targetMaxs[i] = targetMax;
+                        }
                     }
 
-                    INDArray[] maxBools = new INDArray[curLabels.length];
-                    for(int i = 0; i < curLabels.length; i++){
-                        maxBools[i] = curLabels[i].eq(max);
-                    }
-
-                    INDArray targetMax = Nd4j.zeros(targetLabels[0].shape());
-                    for(int i = 0; i < targetLabels.length; i++){
-                        targetMax = targetMax.add(maxBools[i].mul(targetLabels[i]));
-                    }
-
-                    MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(targetMax, metaData.decayRate);
+                    MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(targetMaxs, metaData.decayRate);
                     graph.fit(dataSet);
 
                     if (metaData.targetRotation != 0 && iterations % metaData.targetRotation == 0) {

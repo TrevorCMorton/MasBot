@@ -43,6 +43,24 @@ public class AgentDependencyGraph implements Serializable {
         }
     }
 
+    public ArrayList<ArrayList<Integer>> getAgentInds(String[] outputs){
+        ArrayList<ArrayList<Integer>> agentInds = new ArrayList<>();
+        for(AgentDependencyGraph.Node node : this.getNodes()){
+            ArrayList<Integer> inds = new ArrayList<>();
+            for(int i = 0; i < outputs.length; i++){
+                for(String name : node.agent.getOutputNames()){
+                    if(name.equals(outputs[i])){
+                        inds.add(i);
+                    }
+                }
+            }
+
+            agentInds.add(inds);
+        }
+
+        return agentInds;
+    }
+
     public class Node implements Serializable{
         public IAgent agent;
         public List<Node> dependents;

@@ -56,8 +56,6 @@ public class MeleeRunner {
         Thread t = new Thread(server);
         t.start();
 
-        CudaEnvironment.getInstance().getConfiguration().useDevice(0);
-
         AgentDependencyGraph dependencyGraph = server.getDependencyGraph();
         MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph, Double.parseDouble(args[0]), false, 0);
         decisionAgent.setMetaGraph(server.getUpdatedNetwork());

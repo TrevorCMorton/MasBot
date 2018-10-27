@@ -26,6 +26,7 @@ public class MetaDecisionAgent {
     private long iters;
     private double prob;
     private int commDepth;
+    private ArrayList<ArrayList<Integer>> agentInds;
 
     public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, double prob, boolean build, int commDepth){
         this.dependencyGraph = dependencyGraph;
@@ -147,6 +148,8 @@ public class MetaDecisionAgent {
     public String[] getOutputNames(){
         return this.outputs;
     }
+
+    public ArrayList<ArrayList<Integer>> getAgentInds() { return this.agentInds; }
 
     private List<String> buildInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
         List<String> inputNames = new ArrayList<>();
