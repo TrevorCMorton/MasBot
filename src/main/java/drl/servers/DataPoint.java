@@ -29,7 +29,7 @@ public class DataPoint {
             qOffsetLabels[i] = newLabel;
         }
 
-        return new MultiDataSet(this.startState, qOffsetLabels/*, null, masks*/);
+        return new MultiDataSet(this.startState, qOffsetLabels, null, masks);
     }
 
     public INDArray[] getStartState() {
