@@ -107,6 +107,8 @@ class P4:
     def get_frame_reward(self):
         temp = self.reward
         self.reward = 0
+        if temp == 0:
+            temp += .05
         return temp
 
     def frame_reward(self):

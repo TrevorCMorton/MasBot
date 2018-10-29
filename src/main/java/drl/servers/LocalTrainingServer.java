@@ -73,7 +73,7 @@ public class LocalTrainingServer implements ITrainingServer{
         IAgent abuttonAgent = new MeleeButtonAgent("A");
         dependencyGraph.addAgent(null, joystickAgent, "M");
         //dependencyGraph.addAgent(new String[]{"M"}, cstickAgent, "C");
-        dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
+        //dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
 
         int replaySize = Integer.parseInt(args[0]);
         int batchSize = Integer.parseInt(args[1]);
