@@ -45,12 +45,15 @@ public class LocalTrainingServer implements ITrainingServer{
     private boolean connectFromNetwork;
     private int pointsGathered;
     private int iterations;
+    private int pointWait;
     private boolean run;
 
     public LocalTrainingServer(boolean connectFromNetwork, int maxReplaySize, int batchSize, AgentDependencyGraph dependencyGraph){
         this.batchSize = batchSize;
-
         this.connectFromNetwork = connectFromNetwork;
+
+        this.pointWait = 500;
+
         this.dataPoints = new CircularFifoQueue<>(maxReplaySize);
         this.random = new Random(324);
 
@@ -188,7 +191,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
             boolean sufficientDataGathered = this.dataPoints.size() > this.batchSize;
 
-            if (sufficientDataGathered) {
+            if (sufficientDataGathered && pointWait > 0) {
                 INDArray[][] startStates = new INDArray[this.batchSize][];
                 INDArray[][] endStates = new INDArray[this.batchSize][];
                 INDArray[][] labels = new INDArray[this.batchSize][];
@@ -267,11 +270,15 @@ public class LocalTrainingServer implements ITrainingServer{
                     System.out.println("This thread is weak");
                 }
             }
+
+            this.pointWait -= 1;
         }
     }
 
     @Override
     public void addData(INDArray[] startState, INDArray[] endState, INDArray[] masks, float score) {
+        pointWait = 500;
+        
         INDArray[] labels = new INDArray[masks.length];
 
         for (int i = 0; i < masks.length; i++) {
