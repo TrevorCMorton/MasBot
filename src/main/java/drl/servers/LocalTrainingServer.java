@@ -278,7 +278,7 @@ public class LocalTrainingServer implements ITrainingServer{
     @Override
     public void addData(INDArray[] startState, INDArray[] endState, INDArray[] masks, float score) {
         pointWait = 500;
-        
+
         INDArray[] labels = new INDArray[masks.length];
 
         for (int i = 0; i < masks.length; i++) {
