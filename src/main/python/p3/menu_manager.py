@@ -106,7 +106,6 @@ class MenuManager:
                 pad.tilt_stick(p3.pad.Stick.MAIN, 0.5 * (dx / mag) + 0.5, 0.5 * (dy / mag) + 0.5)
             return False
 
-
     def pick_kirby(self, state, pad):
         if self.selected_fox:
             pad.tilt_stick(p3.pad.Stick.MAIN, .5, .5)
@@ -116,6 +115,25 @@ class MenuManager:
             # Go to kirby and press A
             target_x = -3
             target_y = 11.5
+            dx = target_x - state.players[2].cursor_x
+            dy = target_y - state.players[2].cursor_y
+            mag = math.sqrt(dx * dx + dy * dy)
+            if mag < 1:
+                pad.press_button(p3.pad.Button.A)
+                self.selected_fox = True
+            else:
+                pad.tilt_stick(p3.pad.Stick.MAIN, 0.5 * (dx / mag) + 0.5, 0.5 * (dy / mag) + 0.5)
+            return False
+
+    def pick_dk(self, state, pad):
+        if self.selected_fox:
+            pad.tilt_stick(p3.pad.Stick.MAIN, .5, .5)
+            pad.release_button(p3.pad.Button.A)
+            return True
+        else:
+            # Go to kirby and press A
+            target_x = 8
+            target_y = 20
             dx = target_x - state.players[2].cursor_x
             dy = target_y - state.players[2].cursor_y
             mag = math.sqrt(dx * dx + dy * dy)

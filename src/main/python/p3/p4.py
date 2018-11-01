@@ -64,7 +64,7 @@ class P4:
         elif state.menu == p3.state.Menu.Characters:
             if self.setup:
                 if mm.pick_cpu(state, pad):
-                    if mm.pick_fox(state, pad):
+                    if mm.pick_dk(state, pad):
                         if mm.set_rules(state, pad):
                             if mm.set_level(state, pad, self.cpu_level):
                                 mm.press_start_lots(state, pad)
@@ -156,8 +156,9 @@ class P4:
                     self.players = players_tuples
 
     def get_frame(self, size):
-        arr = self.to_grayscale(cv2.resize(np.array(next(self.sw)), (size, size), interpolation=cv2.INTER_LINEAR)[:,:,:3])[:,:,:1].flatten()
-        return (arr - arr.mean()) / np.abs(arr.max())
+        arr = self.to_grayscale(cv2.resize(np.array(next(self.sw)), (size, size), interpolation=cv2.INTER_LINEAR)[:,:,:3])[:,:,:1]
+        #return (arr - arr.mean()) / np.abs(arr.max())
+        return arr
 
     def get_frame_fast(self):
         while self.frame is None:
@@ -165,7 +166,7 @@ class P4:
         return self.frame
 
     def get_flat_frame(self):
-        return self.get_frame_fast()
+        return self.get_frame_fast().flatten()
 
     def to_grayscale(self, im):
         im[:] = im.mean(axis=-1,keepdims=1)

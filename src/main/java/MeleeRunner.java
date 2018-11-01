@@ -42,10 +42,10 @@ public class MeleeRunner {
         NetworkTrainingServer server;
 
         try {
-            server = new NetworkTrainingServer("hinton.csse.rose-hulman.edu");
+            //server = new NetworkTrainingServer("hinton.csse.rose-hulman.edu");
             //ITrainingServer server = new NetworkTrainingServer("localhost");
             //server = new NetworkTrainingServer("192.168.3.47");
-            //server = new NetworkTrainingServer("localhost");
+            server = new NetworkTrainingServer("localhost");
         }
         catch (Exception e){
             System.out.println("Could not connect to server");
@@ -103,7 +103,6 @@ public class MeleeRunner {
                 if(curScore != 0) {
                     System.out.println(curScore);
                 }
-
                 if(sendData) {
                     server.addData(prevState, state, prevActionMask, curScore);
                 }

@@ -52,7 +52,7 @@ public class LocalTrainingServer implements ITrainingServer{
         this.batchSize = batchSize;
         this.connectFromNetwork = connectFromNetwork;
 
-        this.pointWait = 500;
+        this.pointWait = 5;
 
         this.dataPoints = new CircularFifoQueue<>(maxReplaySize);
         this.random = new Random(324);
@@ -277,7 +277,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
     @Override
     public void addData(INDArray[] startState, INDArray[] endState, INDArray[] masks, float score) {
-        pointWait = 500;
+        pointWait = 5;
 
         INDArray[] labels = new INDArray[masks.length];
 
