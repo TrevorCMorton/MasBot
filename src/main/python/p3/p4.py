@@ -64,7 +64,7 @@ class P4:
         elif state.menu == p3.state.Menu.Characters:
             if self.setup:
                 if mm.pick_cpu(state, pad):
-                    if mm.pick_dk(state, pad):
+                    if mm.pick_fox(state, pad):
                         if mm.set_rules(state, pad):
                             if mm.set_level(state, pad, self.cpu_level):
                                 mm.press_start_lots(state, pad)
