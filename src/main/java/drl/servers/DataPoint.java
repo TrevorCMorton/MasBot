@@ -23,8 +23,15 @@ public class DataPoint {
     public MultiDataSet getDataSetWithQOffset(INDArray[] targetMaxs, float decayRate){
         INDArray[] qOffsetLabels = new INDArray[this.labels.length];
 
+        INDArray absMax = abs(this.labels[0]);
+        for(int i = 1; i < this.labels.length; i++){
+            absMax = (absMax.add(abs(this.labels[i])).add(abs(absMax.sub(abs(this.labels[i]))))).mul(.5);
+        }
+
+        INDArray terminal = not(greaterThanOrEqual(absMax, Nd4j.ones(absMax.shape())));
+
         for(int i = 0; i < this.labels.length; i++){
-            INDArray propReward = targetMaxs[i].mul(decayRate);
+            INDArray propReward = targetMaxs[i].mul(decayRate).mul(terminal);
             INDArray newLabel = this.labels[i].add(propReward);
             qOffsetLabels[i] = newLabel;
         }
