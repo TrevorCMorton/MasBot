@@ -9,11 +9,12 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <nd4j.backend>nd4j-cuda-9.2-platform</nd4j.backend>
+        <!-- <nd4j.backend>nd4j-cuda-9.2-platform</nd4j.backend> -->
+        <nd4j.backend>nd4j-native-platform</nd4j.backend>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <shadedClassifier>bin</shadedClassifier>
 
-        <java.version>10</java.version>
+        <java.version>1.8</java.version>
         <nd4j.version>1.0.0-beta2</nd4j.version>
         <dl4j.version>1.0.0-beta2</dl4j.version>
 
@@ -58,6 +59,11 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.nd4j</groupId>
+                <artifactId>nd4j-native-platform</artifactId>
+                <version>${nd4j.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.nd4j</groupId>
                 <artifactId>nd4j-cuda-8.0-platform</artifactId>
@@ -123,12 +129,6 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>${logback.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.deeplearning4j</groupId>
-            <artifactId>deeplearning4j-cuda-9.2</artifactId>
-            <version>${dl4j.version}</version>
         </dependency>
     </dependencies>
 
