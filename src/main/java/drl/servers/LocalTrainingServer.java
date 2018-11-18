@@ -10,10 +10,9 @@ import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.stats.StatsListener;
+import org.deeplearning4j.ui.storage.FileStatsStorage;
 import org.deeplearning4j.ui.storage.InMemoryStatsStorage;
 import org.deeplearning4j.util.ModelSerializer;
-import org.nd4j.jita.concurrency.CudaAffinityManager;
-import org.nd4j.jita.conf.CudaEnvironment;
 import org.nd4j.linalg.api.concurrency.AffinityManager;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
@@ -66,17 +65,14 @@ public class LocalTrainingServer implements ITrainingServer{
     }
 
     public static void main(String[] args) throws Exception{
-        CudaEnvironment.getInstance().getConfiguration()
-                .setMaximumDeviceCache(8L * 1024L * 1024L * 1024L);
-
         AgentDependencyGraph dependencyGraph = new AgentDependencyGraph();
 
         IAgent joystickAgent = new MeleeJoystickAgent("M");
         IAgent cstickAgent = new MeleeJoystickAgent("C");
         IAgent abuttonAgent = new MeleeButtonAgent("A");
         dependencyGraph.addAgent(null, joystickAgent, "M");
-        //dependencyGraph.addAgent(new String[]{"M"}, cstickAgent, "C");
-        //dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
+        dependencyGraph.addAgent(new String[]{"M"}, cstickAgent, "C");
+        dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
 
         int replaySize = Integer.parseInt(args[0]);
         int batchSize = Integer.parseInt(args[1]);
@@ -102,13 +98,13 @@ public class LocalTrainingServer implements ITrainingServer{
                 server.addGraph(metaData, model);
             }
             else{
-                MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, 0, true, commDepth);
+                MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, 0, commDepth);
                 server.addGraph(metaData, agent.getMetaGraph());
                 dependencyGraph.resetNodes();
             }
         }
 
-        MetaDecisionAgent outputsAgent = new MetaDecisionAgent(dependencyGraph, 0, true, 3);
+        MetaDecisionAgent outputsAgent = new MetaDecisionAgent(dependencyGraph, 0, 3);
         server.outputs = outputsAgent.getOutputNames();
 
         Thread t = new Thread(server);
@@ -366,7 +362,18 @@ public class LocalTrainingServer implements ITrainingServer{
     protected void addGraph(GraphMetadata metaData, ComputationGraph graph){
         this.graphs.put(metaData, graph);
         this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, metaData.targetRotation != 0, false));
-        this.graphs.get(metaData).setListeners(new ScoreIterationListener(100));
+
+        //Initialize the user interface backend
+        UIServer uiServer = UIServer.getInstance();
+
+        //Configure where the network information (gradients, score vs. time etc) is to be stored. Here: store in memory.
+        StatsStorage statsStorage = new FileStatsStorage(new File(metaData.getName() + ".stor"));         //Alternative: new FileStatsStorage(File), for saving and loading later
+
+        //Attach the StatsStorage instance to the UI: this allows the contents of the StatsStorage to be visualized
+        uiServer.attach(statsStorage);
+
+        //Then add the StatsListener to collect this information from the network, as it trains
+        this.graphs.get(metaData).setListeners(new StatsListener(statsStorage), new ScoreIterationListener(100));
     }
 
     private INDArray[] concatSet(INDArray[][] set){

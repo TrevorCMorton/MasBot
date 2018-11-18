@@ -5,7 +5,6 @@ import drl.MetaDecisionAgent;
 import drl.servers.LocalTrainingServer;
 import drl.servers.NetworkTrainingServer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.nd4j.jita.conf.CudaEnvironment;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import drl.servers.DummyTrainingServer;
@@ -42,10 +41,10 @@ public class MeleeRunner {
         NetworkTrainingServer server;
 
         try {
-            server = new NetworkTrainingServer("hinton.csse.rose-hulman.edu");
+            //server = new NetworkTrainingServer("hinton.csse.rose-hulman.edu");
             //ITrainingServer server = new NetworkTrainingServer("localhost");
             //server = new NetworkTrainingServer("192.168.3.47");
-            //server = new NetworkTrainingServer("localhost");
+            server = new NetworkTrainingServer("localhost");
         }
         catch (Exception e){
             System.out.println("Could not connect to server");
@@ -57,7 +56,7 @@ public class MeleeRunner {
         t.start();
 
         AgentDependencyGraph dependencyGraph = server.getDependencyGraph();
-        MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph, Double.parseDouble(args[0]), false, 0);
+        MetaDecisionAgent decisionAgent = new MetaDecisionAgent(dependencyGraph, Double.parseDouble(args[0]), 0);
         decisionAgent.setMetaGraph(server.getUpdatedNetwork());
 
         PythonBridge bridge = new PythonBridge(Boolean.parseBoolean(args[3]));
@@ -87,9 +86,11 @@ public class MeleeRunner {
 
             INDArray frame = getFrame(bridge, inputBuffer);
 
-            INDArray[] state = new INDArray[]{ frame/*, Nd4j.concat(1, prevActionMask)*/  };
+            // = new INDArray[]{ frame/*, Nd4j.concat(1, prevActionMask)*/  };
 
-            String[] results = decisionAgent.eval(state);
+            String[] results = decisionAgent.eval(frame);
+
+            INDArray[] state = decisionAgent.getState(frame, results);
 
             bridge.execute(results);
 

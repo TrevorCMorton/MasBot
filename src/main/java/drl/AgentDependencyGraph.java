@@ -10,15 +10,17 @@ import java.util.List;
 
 public class AgentDependencyGraph implements Serializable {
     private HashMap<String, Node> agentNodes;
+    private List<Node> roots;
 
     public AgentDependencyGraph(){
         this.agentNodes = new HashMap<>();
+        this.roots = new ArrayList<>();
     }
 
     public void addAgent(String[] dependencies, IAgent agent, String agentName){
         Node agentNode = new Node(agent);
 
-        if(dependencies != null){
+        if(dependencies != null && dependencies.length != 0){
             for(String dependency : dependencies){
                 if(this.agentNodes.containsKey(dependency)){
                     Node dependencyNode = this.agentNodes.get(dependency);
@@ -27,6 +29,9 @@ public class AgentDependencyGraph implements Serializable {
                 }
 
             }
+        }
+        else{
+            roots.add(agentNode);
         }
 
         this.agentNodes.put(agentName, agentNode);
@@ -59,6 +64,10 @@ public class AgentDependencyGraph implements Serializable {
         }
 
         return agentInds;
+    }
+
+    public List<Node> getRoots(){
+        return this.roots;
     }
 
     public class Node implements Serializable{
