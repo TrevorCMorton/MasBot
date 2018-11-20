@@ -11,9 +11,7 @@ import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.stats.StatsListener;
 import org.deeplearning4j.ui.storage.FileStatsStorage;
-import org.deeplearning4j.ui.storage.InMemoryStatsStorage;
 import org.deeplearning4j.util.ModelSerializer;
-import org.nd4j.linalg.api.concurrency.AffinityManager;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.nd4j.linalg.dataset.MultiDataSet;
@@ -22,9 +20,6 @@ import org.nd4j.linalg.factory.Nd4j;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 
 import static org.nd4j.linalg.ops.transforms.Transforms.abs;
@@ -71,8 +66,8 @@ public class LocalTrainingServer implements ITrainingServer{
         IAgent cstickAgent = new MeleeJoystickAgent("C");
         IAgent abuttonAgent = new MeleeButtonAgent("A");
         dependencyGraph.addAgent(null, joystickAgent, "M");
-        dependencyGraph.addAgent(new String[]{"M"}, cstickAgent, "C");
-        dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
+        //dependencyGraph.addAgent(new String[]{"M"}, cstickAgent, "C");
+        //dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
 
         int replaySize = Integer.parseInt(args[0]);
         int batchSize = Integer.parseInt(args[1]);
