@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 
 public class MetaDecisionAgent {
-    public static final int size = 168;
+    public static final int size = 84;
 
     private ComputationGraph metaGraph;
     private AgentDependencyGraph dependencyGraph;
@@ -221,6 +221,8 @@ public class MetaDecisionAgent {
     private List<String> buildEnvironmentInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
         this.addInput(builder, "Screen", InputType.convolutionalFlat(MetaDecisionAgent.size, MetaDecisionAgent.size,4));
 
+        int convOutSize = ((((MetaDecisionAgent.size - 8) / 4 + 1) - 4) / 2 + 1) - 2;
+
         builder
                 .addLayer("Normalizer",
                         new BatchNormalization.Builder().build(),
@@ -235,7 +237,7 @@ public class MetaDecisionAgent {
                         new ConvolutionLayer.Builder(3, 3).stride(1, 1).nOut(64).activation(Activation.RELU).build(),
                         "Screen2")
                 .addVertex("Screen3Flat",
-                    new PreprocessorVertex(new CnnToFeedForwardPreProcessor()),
+                    new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize, convOutSize, 64)),
                     "Screen3");
 
         List<String> inputNames = new ArrayList<>();
