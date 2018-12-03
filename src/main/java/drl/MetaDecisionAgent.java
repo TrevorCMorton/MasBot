@@ -235,7 +235,7 @@ public class MetaDecisionAgent {
                         new ConvolutionLayer.Builder(3, 3).stride(1, 1).nOut(64).activation(Activation.RELU).build(),
                         "Screen2")
                 .addVertex("Screen3Flat",
-                    new PreprocessorVertex(new CnnToFeedForwardPreProcessor(7, 7, 64)),
+                    new PreprocessorVertex(new CnnToFeedForwardPreProcessor()),
                     "Screen3");
 
         List<String> inputNames = new ArrayList<>();
