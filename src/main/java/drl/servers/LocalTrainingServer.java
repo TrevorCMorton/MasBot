@@ -17,6 +17,8 @@ import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.nd4j.linalg.dataset.MultiDataSet;
 import org.nd4j.linalg.factory.Nd4j;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -31,6 +33,7 @@ public class LocalTrainingServer implements ITrainingServer{
     private HashMap<GraphMetadata, ComputationGraph>  targetGraphs;
     private AgentDependencyGraph dependencyGraph;
     private String[] outputs;
+    private int inputSize;
 
     private CircularFifoQueue<DataPoint> dataPoints;
 
@@ -57,6 +60,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
         this.graphs = new HashMap<>();
         this.targetGraphs = new HashMap<>();
+        this.inputSize = MetaDecisionAgent.size;
     }
 
     public static void main(String[] args) throws Exception{
@@ -91,11 +95,13 @@ public class LocalTrainingServer implements ITrainingServer{
                 System.out.println("Loading model from file");
                 ComputationGraph model = ModelSerializer.restoreComputationGraph(pretrained, true);
                 server.addGraph(metaData, model);
+                System.out.println(model.summary());
             }
             else{
                 MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, 0, commDepth);
                 server.addGraph(metaData, agent.getMetaGraph());
                 dependencyGraph.resetNodes();
+                System.out.println(agent.getMetaGraph().summary());
             }
         }
 
@@ -138,6 +144,10 @@ public class LocalTrainingServer implements ITrainingServer{
                                         INDArray[] endState = (INDArray[]) input.readObject();
                                         INDArray[] masks = (INDArray[]) input.readObject();
                                         float score = (float) input.readObject();
+
+                                        if(server.dataPoints.size() % 100 == 0){
+                                            server.writeStateToImage(startState, "start");
+                                        }
 
                                         server.addData(startState, endState, masks, score);
                                     }
@@ -368,7 +378,7 @@ public class LocalTrainingServer implements ITrainingServer{
         uiServer.attach(statsStorage);
 
         //Then add the StatsListener to collect this information from the network, as it trains
-        this.graphs.get(metaData).setListeners(new StatsListener(statsStorage), new ScoreIterationListener(100));
+        this.graphs.get(metaData).setListeners(/*new StatsListener(statsStorage),*/ new ScoreIterationListener(100));
     }
 
     private INDArray[] concatSet(INDArray[][] set){
@@ -386,4 +396,27 @@ public class LocalTrainingServer implements ITrainingServer{
 
         return result;
     }
+
+    private void writeStateToImage(INDArray[] state, String fileName){
+        try{
+            File f = new File(fileName + ".jpg");
+            BufferedImage img = new BufferedImage(this.inputSize, this.inputSize, BufferedImage.TYPE_3BYTE_BGR);
+
+            INDArray stateImage = state[0].getColumn(3);
+            int[] pixelValues = Nd4j.toFlattened(stateImage).toIntVector();
+
+            int index = 0;
+            for(int i = 0; i < this.inputSize; i++){
+                for(int j = 0; j < this.inputSize; j++){
+                    img.setRGB(j, i, pixelValues[index] * 0x10101);
+                    index++;
+                }
+            }
+
+            ImageIO.write(img, "jpg", f);
+        }catch(IOException e){
+            System.out.println(e);
+        }
+    }
+
 }
