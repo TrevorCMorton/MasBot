@@ -193,6 +193,8 @@ public class LocalTrainingServer implements ITrainingServer{
             boolean sufficientDataGathered = this.dataPoints.size() > this.batchSize;
 
             if (sufficientDataGathered && pointWait > 0) {
+                long start = System.currentTimeMillis();
+
                 INDArray[][] startStates = new INDArray[this.batchSize][];
                 INDArray[][] endStates = new INDArray[this.batchSize][];
                 INDArray[][] labels = new INDArray[this.batchSize][];
@@ -211,6 +213,11 @@ public class LocalTrainingServer implements ITrainingServer{
                 }
 
                 DataPoint cumulativeData = new DataPoint(this.concatSet(startStates), this.concatSet(endStates), this.concatSet(labels), this.concatSet(masks));
+
+                long end = System.currentTimeMillis();
+                System.out.print(end - start);
+
+                start = System.currentTimeMillis();
 
                 for(GraphMetadata metaData : this.graphs.keySet()) {
                     ComputationGraph graph = this.graphs.get(metaData);
@@ -260,12 +267,15 @@ public class LocalTrainingServer implements ITrainingServer{
                     }
                 }
 
+                end = System.currentTimeMillis();
+                System.out.println(" " + (end - start));
+
                 iterations++;
 
             }
             else{
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(50);
                 }
                 catch (Exception e){
                     System.out.println("This thread is weak");
