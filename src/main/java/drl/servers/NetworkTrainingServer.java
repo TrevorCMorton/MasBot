@@ -92,13 +92,13 @@ public class NetworkTrainingServer implements ITrainingServer{
 
     @Override
     public void stop() {
-        this.run = false;
         try {
             this.flushQueue();
         }
         catch (Exception e){
             System.out.println(e);
         }
+        this.run = false;
     }
 
     @Override
