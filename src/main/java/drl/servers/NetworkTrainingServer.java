@@ -93,6 +93,12 @@ public class NetworkTrainingServer implements ITrainingServer{
     @Override
     public void stop() {
         this.run = false;
+        try {
+            this.flushQueue();
+        }
+        catch (Exception e){
+            System.out.println(e);
+        }
     }
 
     @Override
@@ -125,7 +131,7 @@ public class NetworkTrainingServer implements ITrainingServer{
         }
     }
 
-    public void flushQueue() throws Exception{
+    private void flushQueue() throws Exception{
         sendData = false;
         while (sendingData) {
             Thread.sleep(10);

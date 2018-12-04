@@ -1,6 +1,7 @@
 package drl;
 
 import drl.agents.IAgent;
+import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.graph.PreprocessorVertex;
@@ -45,14 +46,14 @@ public class MetaDecisionAgent {
 
         this.dependencyGraph.resetNodes();
 
-        Nesterovs updater = new Nesterovs(.1);
-        updater.setLearningRate(.0001);
+
 
         ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
             .seed(123)
             .l2(0.0005)
             .weightInit(WeightInit.XAVIER)
-            .updater(updater)
+            .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
+            .updater(new Adam())
             .graphBuilder();
 
         Collection<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getNodes();

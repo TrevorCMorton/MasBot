@@ -5,8 +5,10 @@ import drl.MetaDecisionAgent;
 import drl.agents.IAgent;
 import drl.agents.MeleeButtonAgent;
 import drl.agents.MeleeJoystickAgent;
+import org.apache.commons.io.IOUtils;
 import org.deeplearning4j.api.storage.StatsStorage;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.stats.StatsListener;
@@ -22,6 +24,9 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 import static org.nd4j.linalg.ops.transforms.Transforms.abs;
@@ -109,6 +114,7 @@ public class LocalTrainingServer implements ITrainingServer{
         server.outputs = outputsAgent.getOutputNames();
 
         Thread t = new Thread(server);
+        t.setPriority(Thread.MAX_PRIORITY);
         t.start();
 
         Queue<Integer> availablePorts = new LinkedList<>();
@@ -119,63 +125,76 @@ public class LocalTrainingServer implements ITrainingServer{
 
         System.out.println("Accepting Clients");
 
-        while(true) {
+        while(!availablePorts.isEmpty()) {
             int port = availablePorts.poll();
-            ServerSocket ss = new ServerSocket(port);
-            Socket socket = ss.accept();
-
-            System.out.println("Client connected on port " + port);
 
             Runnable r = new Runnable() {
                 @Override
                 public void run() {
-                    try {
-                        OutputStream rawOutput = socket.getOutputStream();
-                        ObjectOutputStream output = new ObjectOutputStream(rawOutput);
-                        ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
+                    while(true) {
+                        try {
+                            ServerSocket ss = new ServerSocket(port);
+                            Socket socket = ss.accept();
+                            System.out.println("Client connected on port " + port);
 
-                        while (true) {
-                            String message = (String) input.readObject();
+                            OutputStream rawOutput = socket.getOutputStream();
+                            ObjectOutputStream output = new ObjectOutputStream(rawOutput);
+                            ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
 
-                            switch (message) {
-                                case ("addData"):
-                                    try {
-                                        INDArray[] startState = (INDArray[]) input.readObject();
-                                        INDArray[] endState = (INDArray[]) input.readObject();
-                                        INDArray[] masks = (INDArray[]) input.readObject();
-                                        float score = (float) input.readObject();
+                            try {
+                                while (true) {
+                                    String message = (String) input.readObject();
 
-                                        if(server.dataPoints.size() % 100 == 0){
-                                            server.writeStateToImage(startState, "start");
-                                        }
+                                    switch (message) {
+                                        case ("addData"):
+                                            try {
+                                                INDArray[] startState = (INDArray[]) input.readObject();
+                                                INDArray[] endState = (INDArray[]) input.readObject();
+                                                INDArray[] masks = (INDArray[]) input.readObject();
+                                                float score = (float) input.readObject();
 
-                                        server.addData(startState, endState, masks, score);
+                                                if (server.dataPoints.size() % 100 == 0) {
+                                                    server.writeStateToImage(startState, "start");
+                                                }
+
+                                                server.addData(startState, endState, masks, score);
+                                            } catch (Exception e) {
+                                                System.out.println("Error while attempting to upload a data point, point destroyed");
+                                            }
+                                            break;
+                                        case ("getUpdatedNetwork"):
+                                            Iterator<GraphMetadata> iterator = server.graphs.keySet().iterator();
+                                            GraphMetadata randomData = iterator.next();
+                                            for (int i = 1; i < server.random.nextInt(server.graphs.size()); i++) {
+                                                randomData = iterator.next();
+                                            }
+
+                                            Path modelPath = Paths.get(server.getModelName(randomData));
+                                            byte[] modelBytes = Files.readAllBytes(modelPath);
+                                            output.writeObject(modelBytes);
+                                            break;
+                                        case ("getDependencyGraph"):
+                                            output.writeObject(server.getDependencyGraph());
+                                            break;
+                                        default:
+                                            System.out.println("Got unregistered input " + message);
                                     }
-                                    catch (Exception e){
-                                        System.out.println("Error while attempting to upload a data point, point destroyed");
-                                    }
-                                    //while(server.pointsGathered > server.batchSize && server.iterations < server.pointsGathered){
-                                    //    Thread.sleep(10);
-                                    //}
-                                    break;
-                                case ("getUpdatedNetwork"):
-                                    ComputationGraph graph = server.getUpdatedNetwork();
-                                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                                    ModelSerializer.writeModel(graph, baos, false);
-
-                                    output.writeObject(baos.toByteArray());
-                                    break;
-                                case ("getDependencyGraph"):
-                                    output.writeObject(server.getDependencyGraph());
-                                    break;
-                                default:
-                                    System.out.println("Got unregistered input " + message);
+                                }
+                            }
+                            catch (Exception e){
+                                System.out.println(e);
+                                System.out.println("Client disconnected from port " + port);
+                            }
+                            finally {
+                                socket.close();
+                                ss.close();
                             }
                         }
-                    } catch (Exception e) {
-                        System.out.println(e);
-                        availablePorts.add(port);
-                        System.out.println("Client disconnected from port " + port);
+                        catch (IOException e) {
+                            System.out.println(e);
+                            System.out.println("Error opening port " + port);
+                        }
+
                     }
                 }
             };
@@ -193,31 +212,23 @@ public class LocalTrainingServer implements ITrainingServer{
             boolean sufficientDataGathered = this.dataPoints.size() > this.batchSize;
 
             if (sufficientDataGathered && pointWait > 0) {
-                long start = System.currentTimeMillis();
 
                 INDArray[][] startStates = new INDArray[this.batchSize][];
                 INDArray[][] endStates = new INDArray[this.batchSize][];
                 INDArray[][] labels = new INDArray[this.batchSize][];
                 INDArray[][] masks = new INDArray[this.batchSize][];
 
-                synchronized (this.dataPoints) {
-                    for (int i = 0; i < this.batchSize; i++) {
-                        int index = this.random.nextInt(this.dataPoints.size());
-                        DataPoint data = this.dataPoints.get(index);
+                for (int i = 0; i < this.batchSize; i++) {
+                    int index = (int)(Math.random() * this.dataPoints.size());
+                    DataPoint data = this.dataPoints.get(index);
 
-                        startStates[i] = data.getStartState();
-                        endStates[i] = data.getEndState();
-                        labels[i] = data.getLabels();
-                        masks[i] = data.getMasks();
-                    }
+                    startStates[i] = data.getStartState();
+                    endStates[i] = data.getEndState();
+                    labels[i] = data.getLabels();
+                    masks[i] = data.getMasks();
                 }
 
                 DataPoint cumulativeData = new DataPoint(this.concatSet(startStates), this.concatSet(endStates), this.concatSet(labels), this.concatSet(masks));
-
-                long end = System.currentTimeMillis();
-                System.out.print(end - start);
-
-                start = System.currentTimeMillis();
 
                 for(GraphMetadata metaData : this.graphs.keySet()) {
                     ComputationGraph graph = this.graphs.get(metaData);
@@ -234,12 +245,10 @@ public class LocalTrainingServer implements ITrainingServer{
                         for(int i : inds){
                             curIndLabels[concatInd] = curLabels[i];
                             concatInd++;
-                            //max = max.add(curLabels[i]).add(abs(max.sub(curLabels[i]))).mul(.5);
                         }
                         INDArray max = Nd4j.concat(1, curIndLabels);
                         max = Nd4j.max(max, 1);
 
-                        //BUG: .eq does not return 1 for all the correct values because the float values are changed too much in the max func
                         INDArray[] maxBools = new INDArray[curLabels.length];
                         for(int i : inds){
                             maxBools[i] = curLabels[i].eq(max);
@@ -259,7 +268,7 @@ public class LocalTrainingServer implements ITrainingServer{
                     graph.fit(dataSet);
 
                     if (metaData.targetRotation != 0 && iterations % metaData.targetRotation == 0) {
-                        this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true, false));
+                        this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true));
                     }
 
                     if(iterations % 100 == 0){
@@ -267,22 +276,13 @@ public class LocalTrainingServer implements ITrainingServer{
                     }
                 }
 
-                end = System.currentTimeMillis();
-                System.out.println(" " + (end - start));
-
                 iterations++;
 
             }
-            else{
-                try {
-                    Thread.sleep(50);
-                }
-                catch (Exception e){
-                    System.out.println("This thread is weak");
-                }
-            }
 
-            this.pointWait -= 1;
+            if(this.pointWait != 0) {
+                this.pointWait -= 1;
+            }
         }
     }
 
@@ -298,9 +298,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
         DataPoint data = new DataPoint(startState, endState, labels, masks);
 
-        synchronized (this.dataPoints) {
-            this.dataPoints.add(data);
-        }
+        this.dataPoints.add(data);
 
         pointsGathered++;
 
@@ -316,18 +314,23 @@ public class LocalTrainingServer implements ITrainingServer{
         for(int i = 1; i < this.random.nextInt(graphs.size()); i++){
             randomData = iterator.next();
         }
-        return this.getUpdatedNetwork(randomData, !this.connectFromNetwork, true);
+        return this.getUpdatedNetwork(randomData, !this.connectFromNetwork);
     }
 
-    private ComputationGraph getUpdatedNetwork(GraphMetadata metaData, boolean clone, boolean overwrite) {
+    private ComputationGraph getUpdatedNetwork(GraphMetadata metaData, boolean clone) {
         try{
             ComputationGraph graph = this.graphs.get(metaData);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ModelSerializer.writeModel(graph, baos, true);
 
-            byte[] modelBytes = baos.toByteArray();
 
-            if(overwrite) {
+            if(!clone){
+                return graph;
+            }
+            else {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ModelSerializer.writeModel(graph, baos, true);
+
+                byte[] modelBytes = baos.toByteArray();
+
                 File f = new File(this.getModelName(metaData));
 
                 if (f.exists()) {
@@ -336,12 +339,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
                 FileOutputStream fout = new FileOutputStream(f);
                 fout.write(modelBytes);
-            }
 
-            if(!clone){
-                return graph;
-            }
-            else {
                 ByteArrayInputStream bais = new ByteArrayInputStream(modelBytes);
                 return ModelSerializer.restoreComputationGraph(bais, true);
             }
@@ -376,25 +374,18 @@ public class LocalTrainingServer implements ITrainingServer{
 
     protected void addGraph(GraphMetadata metaData, ComputationGraph graph){
         this.graphs.put(metaData, graph);
-        this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, metaData.targetRotation != 0, false));
+        this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, metaData.targetRotation != 0));
 
-        //Initialize the user interface backend
-        UIServer uiServer = UIServer.getInstance();
-
-        //Configure where the network information (gradients, score vs. time etc) is to be stored. Here: store in memory.
-        StatsStorage statsStorage = new FileStatsStorage(new File(metaData.getName() + ".stor"));         //Alternative: new FileStatsStorage(File), for saving and loading later
-
-        //Attach the StatsStorage instance to the UI: this allows the contents of the StatsStorage to be visualized
-        uiServer.attach(statsStorage);
-
-        //Then add the StatsListener to collect this information from the network, as it trains
-        this.graphs.get(metaData).setListeners(/*new StatsListener(statsStorage),*/ new ScoreIterationListener(100));
+        int listenerFrequency = 1;
+        boolean reportScore = true;
+        boolean reportGC = true;
+        this.graphs.get(metaData).setListeners(new PerformanceListener(5, reportScore));
     }
 
     private INDArray[] concatSet(INDArray[][] set){
         INDArray[] result = new INDArray[set[0].length];
 
-        for(int j = 0; j < set[0].length; j++) {
+        for(int j = 0; j < result.length; j++) {
             INDArray[] toConcat = new INDArray[set.length];
 
             for (int i = 0; i < set.length; i++) {
