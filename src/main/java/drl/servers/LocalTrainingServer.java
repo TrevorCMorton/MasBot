@@ -69,6 +69,8 @@ public class LocalTrainingServer implements ITrainingServer{
     }
 
     public static void main(String[] args) throws Exception{
+        Nd4j.getMemoryManager().togglePeriodicGc(false);
+
         AgentDependencyGraph dependencyGraph = new AgentDependencyGraph();
 
         IAgent joystickAgent = new MeleeJoystickAgent("M");
@@ -122,6 +124,8 @@ public class LocalTrainingServer implements ITrainingServer{
         for(int port : LocalTrainingServer.ports){
             availablePorts.add(port);
         }
+
+        Nd4j.getMemoryManager().invokeGc();
 
         System.out.println("Accepting Clients");
 
@@ -188,6 +192,7 @@ public class LocalTrainingServer implements ITrainingServer{
                             finally {
                                 socket.close();
                                 ss.close();
+                                Nd4j.getMemoryManager().invokeGc();
                             }
                         }
                         catch (IOException e) {
@@ -218,19 +223,21 @@ public class LocalTrainingServer implements ITrainingServer{
                 INDArray[][] labels = new INDArray[this.batchSize][];
                 INDArray[][] masks = new INDArray[this.batchSize][];
 
-                for (int i = 0; i < this.batchSize; i++) {
-                    int index = (int)(Math.random() * this.dataPoints.size());
-                    DataPoint data = this.dataPoints.get(index);
+                synchronized (this.dataPoints) {
+                    for (int i = 0; i < this.batchSize; i++) {
+                        int index = (int) (Math.random() * this.dataPoints.size());
+                        DataPoint data = this.dataPoints.get(index);
 
-                    startStates[i] = data.getStartState();
-                    endStates[i] = data.getEndState();
-                    labels[i] = data.getLabels();
-                    masks[i] = data.getMasks();
+                        startStates[i] = data.getStartState();
+                        endStates[i] = data.getEndState();
+                        labels[i] = data.getLabels();
+                        masks[i] = data.getMasks();
+                    }
                 }
 
                 DataPoint cumulativeData = new DataPoint(this.concatSet(startStates), this.concatSet(endStates), this.concatSet(labels), this.concatSet(masks));
 
-                for(GraphMetadata metaData : this.graphs.keySet()) {
+                for (GraphMetadata metaData : this.graphs.keySet()) {
                     ComputationGraph graph = this.graphs.get(metaData);
                     ComputationGraph targetGraph = this.targetGraphs.get(metaData);
 
@@ -239,10 +246,10 @@ public class LocalTrainingServer implements ITrainingServer{
 
                     INDArray[] targetMaxs = new INDArray[curLabels.length];
 
-                    for(ArrayList<Integer> inds : this.dependencyGraph.getAgentInds(this.outputs)){
+                    for (ArrayList<Integer> inds : this.dependencyGraph.getAgentInds(this.outputs)) {
                         int concatInd = 0;
                         INDArray[] curIndLabels = new INDArray[inds.size()];
-                        for(int i : inds){
+                        for (int i : inds) {
                             curIndLabels[concatInd] = curLabels[i];
                             concatInd++;
                         }
@@ -250,16 +257,16 @@ public class LocalTrainingServer implements ITrainingServer{
                         max = Nd4j.max(max, 1);
 
                         INDArray[] maxBools = new INDArray[curLabels.length];
-                        for(int i : inds){
+                        for (int i : inds) {
                             maxBools[i] = curLabels[i].eq(max);
                         }
 
                         INDArray targetMax = Nd4j.zeros(targetLabels[0].shape());
-                        for(int i : inds){
+                        for (int i : inds) {
                             targetMax = targetMax.add(maxBools[i].mul(targetLabels[i]));
                         }
 
-                        for(int i : inds){
+                        for (int i : inds) {
                             targetMaxs[i] = targetMax;
                         }
                     }
@@ -271,7 +278,7 @@ public class LocalTrainingServer implements ITrainingServer{
                         this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true));
                     }
 
-                    if(iterations % 100 == 0){
+                    if (iterations % 100 == 0) {
                         System.out.println(metaData.getName());
                     }
                 }
@@ -280,7 +287,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
             }
 
-            if(this.pointWait != 0) {
+            if (this.pointWait != 0) {
                 this.pointWait -= 1;
             }
         }
@@ -298,7 +305,9 @@ public class LocalTrainingServer implements ITrainingServer{
 
         DataPoint data = new DataPoint(startState, endState, labels, masks);
 
-        this.dataPoints.add(data);
+        synchronized (this.dataPoints){
+            this.dataPoints.add(data);
+        }
 
         pointsGathered++;
 

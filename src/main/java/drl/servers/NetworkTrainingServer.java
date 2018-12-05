@@ -21,14 +21,14 @@ public class NetworkTrainingServer implements ITrainingServer{
     private boolean sendingData;
     private boolean run;
 
-    public NetworkTrainingServer(String url){
+    public NetworkTrainingServer(String url, int port){
         dataMessages = new LinkedList<>();
         sendData = true;
         sendingData = true;
         run = true;
 
         try {
-            Socket socket = this.getServerSocket(url);
+            Socket socket = new Socket(url, port);
 
             this.rawOutput = socket.getOutputStream();
             this.rawInput = socket.getInputStream();
@@ -142,23 +142,5 @@ public class NetworkTrainingServer implements ITrainingServer{
         }
 
         sendData = true;
-    }
-
-    private Socket getServerSocket(String url){
-        boolean socketed = false;
-        int portInd = 0;
-        Socket socket = null;
-
-        while(!socketed){
-            try {
-                socket = new Socket(url, LocalTrainingServer.ports[portInd]);
-                socketed = true;
-            }
-            catch(IOException e){
-                portInd++;
-            }
-        }
-
-        return socket;
     }
 }
