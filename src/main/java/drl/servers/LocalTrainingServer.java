@@ -49,6 +49,7 @@ public class LocalTrainingServer implements ITrainingServer{
     private int iterations;
     private int pointWait;
     private boolean run;
+    private boolean paused;
 
     public LocalTrainingServer(boolean connectFromNetwork, int maxReplaySize, int batchSize, AgentDependencyGraph dependencyGraph){
         this.batchSize = batchSize;
@@ -62,6 +63,7 @@ public class LocalTrainingServer implements ITrainingServer{
         this.dependencyGraph = dependencyGraph;
 
         this.run = true;
+        this.paused = false;
 
         this.graphs = new HashMap<>();
         this.targetGraphs = new HashMap<>();
@@ -216,7 +218,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
             boolean sufficientDataGathered = this.dataPoints.size() > this.batchSize;
 
-            if (sufficientDataGathered && pointWait > 0) {
+            if (!paused && sufficientDataGathered && pointWait > 0) {
 
                 INDArray[][] startStates = new INDArray[this.batchSize][];
                 INDArray[][] endStates = new INDArray[this.batchSize][];
@@ -285,6 +287,14 @@ public class LocalTrainingServer implements ITrainingServer{
 
                 iterations++;
 
+            }
+            else {
+                try {
+                    Thread.sleep(10);
+                }
+                catch (Exception e){
+                    System.out.println("This Thread is Weak");
+                }
             }
 
             if (this.pointWait != 0) {
@@ -362,6 +372,16 @@ public class LocalTrainingServer implements ITrainingServer{
     @Override
     public AgentDependencyGraph getDependencyGraph() {
         return this.dependencyGraph;
+    }
+
+    @Override
+    public void pause() {
+        paused = true;
+    }
+
+    @Override
+    public void resume() {
+        paused = false;
     }
 
     @Override

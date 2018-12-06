@@ -11,5 +11,7 @@ public interface ITrainingServer extends Runnable {
     void addData(INDArray[] startState, INDArray[] endState, INDArray[] masks, float score);
     ComputationGraph getUpdatedNetwork();
     AgentDependencyGraph getDependencyGraph();
+    void pause();
+    void resume();
     void stop();
 }

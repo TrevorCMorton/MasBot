@@ -31,6 +31,16 @@ public class DummyTrainingServer implements ITrainingServer {
     }
 
     @Override
+    public void pause() {
+
+    }
+
+    @Override
+    public void resume() {
+
+    }
+
+    @Override
     public void stop() {
 
     }

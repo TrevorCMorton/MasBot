@@ -54,7 +54,7 @@ public class NetworkTrainingServer implements ITrainingServer{
         try {
             sendData = false;
             while (sendingData) {
-                Thread.sleep(10);
+                Thread.sleep(5);
             }
 
             this.objectOutput.writeObject("getUpdatedNetwork");
@@ -75,7 +75,7 @@ public class NetworkTrainingServer implements ITrainingServer{
         try {
             sendData = false;
             while (sendingData) {
-                Thread.sleep(10);
+                Thread.sleep(5);
             }
 
             this.objectOutput.writeObject("getDependencyGraph");
@@ -87,6 +87,32 @@ public class NetworkTrainingServer implements ITrainingServer{
         catch(Exception e){
             System.out.println("IT GOOFED" + e);
             return null;
+        }
+    }
+
+    @Override
+    public void pause() {
+        try {
+            sendData = false;
+            while (sendingData) {
+                Thread.sleep(5);
+            }
+        }
+        catch(Exception e){
+            System.out.println("IT GOOFED" + e);
+        }
+    }
+
+    @Override
+    public void resume() {
+        try {
+            sendData = true;
+            while (!sendingData) {
+                Thread.sleep(5);
+            }
+        }
+        catch(Exception e){
+            System.out.println("IT GOOFED" + e);
         }
     }
 
@@ -108,7 +134,7 @@ public class NetworkTrainingServer implements ITrainingServer{
                 if(!sendData){
                     sendingData = false;
                     while(!sendData){
-                        Thread.sleep(100);
+                        Thread.sleep(10);
                     }
                     sendingData = true;
                 }
@@ -122,7 +148,7 @@ public class NetworkTrainingServer implements ITrainingServer{
                     }
                 }
                 else{
-                    Thread.sleep(100);
+                    Thread.sleep(10);
                 }
             }
         }
@@ -134,7 +160,7 @@ public class NetworkTrainingServer implements ITrainingServer{
     private void flushQueue() throws Exception{
         sendData = false;
         while (sendingData) {
-            Thread.sleep(10);
+            Thread.sleep(5);
         }
 
         while(!dataMessages.isEmpty()) {
