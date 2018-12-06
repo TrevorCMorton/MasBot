@@ -16,6 +16,7 @@ public class NetworkTrainingServer implements ITrainingServer{
     OutputStream rawOutput;
     ObjectInputStream objectInput;
     InputStream rawInput;
+    Socket socket;
     private Queue<Object> dataMessages;
     private boolean sendData;
     private boolean sendingData;
@@ -28,10 +29,10 @@ public class NetworkTrainingServer implements ITrainingServer{
         run = true;
 
         try {
-            Socket socket = new Socket(url, port);
+            this.socket = new Socket(url, port);
 
-            this.rawOutput = socket.getOutputStream();
-            this.rawInput = socket.getInputStream();
+            this.rawOutput = this.socket.getOutputStream();
+            this.rawInput = this.socket.getInputStream();
             this.objectOutput = new ObjectOutputStream(rawOutput);
             this.objectInput = new ObjectInputStream(rawInput);
         }
@@ -120,11 +121,12 @@ public class NetworkTrainingServer implements ITrainingServer{
     public void stop() {
         try {
             this.flushQueue();
+            this.run = false;
+            this.socket.close();
         }
         catch (Exception e){
             System.out.println(e);
         }
-        this.run = false;
     }
 
     @Override

@@ -218,7 +218,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
             boolean sufficientDataGathered = this.dataPoints.size() > this.batchSize;
 
-            if (!paused && sufficientDataGathered && pointWait > 0) {
+            if (!paused && sufficientDataGathered && iterations < pointsGathered) {
 
                 INDArray[][] startStates = new INDArray[this.batchSize][];
                 INDArray[][] endStates = new INDArray[this.batchSize][];
