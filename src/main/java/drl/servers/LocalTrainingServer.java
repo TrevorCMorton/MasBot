@@ -200,11 +200,10 @@ public class LocalTrainingServer implements ITrainingServer{
                                             output.writeObject(server.getDependencyGraph());
                                             break;
                                         case ("getProb"):
-                                            long iterations = server.graphs.get(server.graphs.keySet().iterator().next()).getIterationCount();
-                                            double prob = (double) iterations / (double) LocalTrainingServer.iterationsToTrain;
+                                            double prob = server.getProb();
                                             output.writeObject(prob);
                                         default:
-                                            System.out.println("Got unregistered input, exiting " + message);
+                                            System.out.println("Got unregistered input, exiting because of " + message);
                                             exit = true;
                                     }
                                 }
@@ -412,6 +411,13 @@ public class LocalTrainingServer implements ITrainingServer{
     @Override
     public void stop() {
         this.run  = false;
+    }
+
+    @Override
+    public double getProb() {
+        long iterations = this.graphs.get(this.graphs.keySet().iterator().next()).getIterationCount();
+        double prob = (double) iterations / (double) LocalTrainingServer.iterationsToTrain;
+        return prob;
     }
 
     protected String getModelName(GraphMetadata metaData){

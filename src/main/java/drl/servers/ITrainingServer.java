@@ -14,4 +14,5 @@ public interface ITrainingServer extends Runnable {
     void pause();
     void resume();
     void stop();
+    double getProb();
 }

@@ -46,6 +46,11 @@ public class DummyTrainingServer implements ITrainingServer {
     }
 
     @Override
+    public double getProb() {
+        return 0;
+    }
+
+    @Override
     public void run() {
 
     }

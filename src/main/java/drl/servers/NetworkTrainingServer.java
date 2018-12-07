@@ -121,11 +121,32 @@ public class NetworkTrainingServer implements ITrainingServer{
     public void stop() {
         try {
             this.flushQueue();
+            this.objectOutput.writeObject("Go Kill Yourself");
             this.run = false;
             this.socket.close();
         }
         catch (Exception e){
             System.out.println(e);
+        }
+    }
+
+    @Override
+    public double getProb() {
+        try {
+            sendData = false;
+            while (sendingData) {
+                Thread.sleep(5);
+            }
+
+            this.objectOutput.writeObject("getProb");
+            Object o = this.objectInput.readObject();
+            double prob = (double) o;
+            sendData = true;
+            return prob;
+        }
+        catch(Exception e){
+            System.out.println("Could Not Get Prob " + e);
+            return 0;
         }
     }
 
