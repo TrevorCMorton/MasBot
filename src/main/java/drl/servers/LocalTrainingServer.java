@@ -33,6 +33,7 @@ import static org.nd4j.linalg.ops.transforms.Transforms.abs;
 
 public class LocalTrainingServer implements ITrainingServer{
     public static final int[] ports = { 1612, 1613, 1614, 1615, 1616 };
+    public static final long iterationsToTrain = 1000000;
 
     private HashMap<GraphMetadata, ComputationGraph> graphs;
     private HashMap<GraphMetadata, ComputationGraph>  targetGraphs;
@@ -142,18 +143,30 @@ public class LocalTrainingServer implements ITrainingServer{
                             ServerSocket ss = new ServerSocket(port);
                             Socket socket = ss.accept();
                             System.out.println("Client connected on port " + port);
+                            long start = System.currentTimeMillis();
 
                             OutputStream rawOutput = socket.getOutputStream();
                             ObjectOutputStream output = new ObjectOutputStream(rawOutput);
                             ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
 
                             try {
+                                boolean exit = false;
                                 while (true) {
-                                    String message = (String) input.readObject();
+                                    if((System.currentTimeMillis() - start) / 1000 > 600){
+                                        exit = true;
+                                    }
 
+                                    if(exit){
+                                        break;
+                                    }
+
+                                    System.out.println("1");
+                                    String message = (String) input.readObject();
+                                    System.out.println("2");
                                     switch (message) {
                                         case ("addData"):
                                             try {
+                                                System.out.println("3");
                                                 INDArray[] startState = (INDArray[]) input.readObject();
                                                 INDArray[] endState = (INDArray[]) input.readObject();
                                                 INDArray[] masks = (INDArray[]) input.readObject();
@@ -169,6 +182,8 @@ public class LocalTrainingServer implements ITrainingServer{
                                             }
                                             break;
                                         case ("getUpdatedNetwork"):
+                                            System.out.println("4");
+
                                             Iterator<GraphMetadata> iterator = server.graphs.keySet().iterator();
                                             GraphMetadata randomData = iterator.next();
                                             for (int i = 1; i < server.random.nextInt(server.graphs.size()); i++) {
@@ -180,18 +195,27 @@ public class LocalTrainingServer implements ITrainingServer{
                                             output.writeObject(modelBytes);
                                             break;
                                         case ("getDependencyGraph"):
+                                            System.out.println("5");
+
                                             output.writeObject(server.getDependencyGraph());
                                             break;
+                                        case ("getProb"):
+                                            long iterations = server.graphs.get(server.graphs.keySet().iterator().next()).getIterationCount();
+                                            double prob = (double) iterations / (double) LocalTrainingServer.iterationsToTrain;
+                                            output.writeObject(prob);
                                         default:
-                                            System.out.println("Got unregistered input " + message);
+                                            System.out.println("Got unregistered input, exiting " + message);
+                                            exit = true;
                                     }
                                 }
                             }
                             catch (Exception e){
                                 System.out.println(e);
+                                e.printStackTrace(System.out);
                                 System.out.println("Client disconnected from port " + port);
                             }
                             finally {
+                                System.out.println("Closing Server Socket");
                                 socket.close();
                                 ss.close();
                                 Nd4j.getMemoryManager().invokeGc();
@@ -199,6 +223,7 @@ public class LocalTrainingServer implements ITrainingServer{
                         }
                         catch (IOException e) {
                             System.out.println(e);
+                            e.printStackTrace(System.out);
                             System.out.println("Error opening port " + port);
                         }
 
@@ -408,7 +433,7 @@ public class LocalTrainingServer implements ITrainingServer{
         int listenerFrequency = 1;
         boolean reportScore = true;
         boolean reportGC = true;
-        this.graphs.get(metaData).setListeners(new PerformanceListener(5, reportScore));
+        this.graphs.get(metaData).setListeners(new PerformanceListener(100, reportScore));
     }
 
     private INDArray[] concatSet(INDArray[][] set){

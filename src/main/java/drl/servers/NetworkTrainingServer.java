@@ -136,7 +136,7 @@ public class NetworkTrainingServer implements ITrainingServer{
                 if(!sendData){
                     sendingData = false;
                     while(!sendData){
-                        Thread.sleep(10);
+                        Thread.sleep(100);
                     }
                     sendingData = true;
                 }
