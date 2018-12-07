@@ -202,6 +202,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                         case ("getProb"):
                                             double prob = server.getProb();
                                             output.writeObject(prob);
+                                            break;
                                         default:
                                             System.out.println("Got unregistered input, exiting because of " + message);
                                             exit = true;
