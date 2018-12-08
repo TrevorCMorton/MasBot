@@ -28,6 +28,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.nd4j.linalg.ops.transforms.Transforms.abs;
 
@@ -231,8 +233,25 @@ public class LocalTrainingServer implements ITrainingServer{
                 }
             };
 
-            Thread sockThread = new Thread(r);
-            sockThread.start();
+            Runnable manager = new Runnable() {
+                @Override
+                public void run() {
+                    while(true) {
+                        try {
+                            Thread sockThread = new Thread(r);
+                            sockThread.start();
+                            Thread.sleep(600 * 1000);
+                            sockThread.stop();
+                            sockThread.destroy();
+                        } catch (Exception e) {
+                            System.out.println("The thread manager failed with " + e);
+                        }
+                    }
+                }
+            };
+
+            Thread managerThread = new Thread(manager);
+            managerThread.start();
         }
     }
 
