@@ -225,12 +225,12 @@ public class MetaDecisionAgent {
         int convOutSize = ((((MetaDecisionAgent.size - 8) / 4 + 1) - 4) / 2 + 1) - 2;
 
         builder
-                .addLayer("Normalizer",
-                        new BatchNormalization.Builder().build(),
-                        "Screen")
+                //.addLayer("Normalizer",
+                //       new BatchNormalization.Builder().build(),
+                //        "Screen")
                 .addLayer("Screen1",
                         new ConvolutionLayer.Builder(8, 8).nIn(4).stride(4, 4).nOut(32).activation(Activation.RELU).build(),
-                        "Normalizer")
+                        "Screen")
                 .addLayer("Screen2",
                         new ConvolutionLayer.Builder(4, 4).stride(2, 2).nOut(64).activation(Activation.RELU).build(),
                         "Screen1")

@@ -17,6 +17,8 @@ import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.nd4j.linalg.dataset.MultiDataSet;
+import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
+import org.nd4j.linalg.dataset.api.preprocessor.MultiNormalizerStandardize;
 import org.nd4j.linalg.factory.Nd4j;
 
 import javax.imageio.ImageIO;
@@ -51,6 +53,7 @@ public class LocalTrainingServer implements ITrainingServer{
     private int pointsGathered;
     private int iterations;
     private int pointWait;
+    private HashMap<Integer, Integer> portConnections;
     private boolean run;
     private boolean paused;
 
@@ -65,6 +68,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
         this.dependencyGraph = dependencyGraph;
 
+        this.portConnections = new HashMap<>();
         this.run = true;
         this.paused = false;
 
@@ -134,41 +138,31 @@ public class LocalTrainingServer implements ITrainingServer{
 
         System.out.println("Accepting Clients");
 
-        while(!availablePorts.isEmpty()) {
-            int port = availablePorts.poll();
+        while(true) {
+            if(!availablePorts.isEmpty()) {
+                int port = availablePorts.poll();
+                server.portConnections.put(port, 0);
 
-            Runnable r = new Runnable() {
-                @Override
-                public void run() {
-                    while(true) {
+                Runnable r = new Runnable() {
+                    @Override
+                    public void run() {
                         try {
                             ServerSocket ss = new ServerSocket(port);
                             Socket socket = ss.accept();
+                            server.portConnections.put(port, server.portConnections.get(port) + 1);
+                            socket.setSoTimeout(600000);
                             System.out.println("Client connected on port " + port);
-                            long start = System.currentTimeMillis();
 
                             OutputStream rawOutput = socket.getOutputStream();
                             ObjectOutputStream output = new ObjectOutputStream(rawOutput);
                             ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
 
                             try {
-                                boolean exit = false;
                                 while (true) {
-                                    if((System.currentTimeMillis() - start) / 1000 > 600){
-                                        exit = true;
-                                    }
-
-                                    if(exit){
-                                        break;
-                                    }
-
-                                    System.out.println("1");
                                     String message = (String) input.readObject();
-                                    System.out.println("2");
                                     switch (message) {
                                         case ("addData"):
                                             try {
-                                                System.out.println("3");
                                                 INDArray[] startState = (INDArray[]) input.readObject();
                                                 INDArray[] endState = (INDArray[]) input.readObject();
                                                 INDArray[] masks = (INDArray[]) input.readObject();
@@ -184,8 +178,6 @@ public class LocalTrainingServer implements ITrainingServer{
                                             }
                                             break;
                                         case ("getUpdatedNetwork"):
-                                            System.out.println("4");
-
                                             Iterator<GraphMetadata> iterator = server.graphs.keySet().iterator();
                                             GraphMetadata randomData = iterator.next();
                                             for (int i = 1; i < server.random.nextInt(server.graphs.size()); i++) {
@@ -197,8 +189,6 @@ public class LocalTrainingServer implements ITrainingServer{
                                             output.writeObject(modelBytes);
                                             break;
                                         case ("getDependencyGraph"):
-                                            System.out.println("5");
-
                                             output.writeObject(server.getDependencyGraph());
                                             break;
                                         case ("getProb"):
@@ -207,51 +197,31 @@ public class LocalTrainingServer implements ITrainingServer{
                                             break;
                                         default:
                                             System.out.println("Got unregistered input, exiting because of " + message);
-                                            exit = true;
+                                            throw new InvalidObjectException("Improper network request");
                                     }
                                 }
-                            }
-                            catch (Exception e){
-                                System.out.println(e);
+                            } catch (Exception e) {
                                 e.printStackTrace(System.out);
                                 System.out.println("Client disconnected from port " + port);
-                            }
-                            finally {
+                            } finally {
                                 System.out.println("Closing Server Socket");
                                 socket.close();
                                 ss.close();
                                 Nd4j.getMemoryManager().invokeGc();
                             }
-                        }
-                        catch (IOException e) {
-                            System.out.println(e);
+                        } catch (IOException e) {
                             e.printStackTrace(System.out);
                             System.out.println("Error opening port " + port);
                         }
-
+                        availablePorts.add(port);
                     }
-                }
-            };
-
-            Runnable manager = new Runnable() {
-                @Override
-                public void run() {
-                    while(true) {
-                        try {
-                            Thread sockThread = new Thread(r);
-                            sockThread.start();
-                            Thread.sleep(600 * 1000);
-                            sockThread.stop();
-                            sockThread.destroy();
-                        } catch (Exception e) {
-                            System.out.println("The thread manager failed with " + e);
-                        }
-                    }
-                }
-            };
-
-            Thread managerThread = new Thread(manager);
-            managerThread.start();
+                };
+                Thread sockThread = new Thread(r);
+                sockThread.start();
+            }
+            else {
+                Thread.sleep(100);
+            }
         }
     }
 
