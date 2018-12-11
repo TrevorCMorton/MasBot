@@ -130,7 +130,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
         Nd4j.getMemoryManager().invokeGc();
 
-        for(int i = 1; i < 1000; i++){
+        for(int i = 1; i < 10000; i++){
             availablePorts.add(LocalTrainingServer.port + i);
         }
 
