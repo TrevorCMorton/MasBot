@@ -34,12 +34,12 @@ public class MetaDecisionAgent {
     private int commDepth;
     private ArrayList<ArrayList<Integer>> agentInds;
 
-    private long evals;
-    private long initSetupTime;
-    private long outputTime;
-    private long layerSetupTime;
-    private long layerDecisionTime;
-    private long layerCleanupTime;
+    private long evals = 0;
+    private long initSetupTime = 0;
+    private long outputTime = 0;
+    private long layerSetupTime = 0;
+    private long layerDecisionTime = 0;
+    private long layerCleanupTime = 0;
 
     public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, double prob, int commDepth){
         this.dependencyGraph = dependencyGraph;
