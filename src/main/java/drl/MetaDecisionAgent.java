@@ -34,6 +34,13 @@ public class MetaDecisionAgent {
     private int commDepth;
     private ArrayList<ArrayList<Integer>> agentInds;
 
+    private long evals;
+    private long initSetupTime;
+    private long outputTime;
+    private long layerSetupTime;
+    private long layerDecisionTime;
+    private long layerCleanupTime;
+
     public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, double prob, int commDepth){
         this.dependencyGraph = dependencyGraph;
         this.prob = prob;
@@ -118,14 +125,28 @@ public class MetaDecisionAgent {
     }
 
     public String[] eval(INDArray input){
+        this.evals++;
+
+        long start = System.currentTimeMillis();
+
         ArrayList<String> actions = new ArrayList<>();
         INDArray[] features = this.getState(input, new String[] {} );
-        INDArray[] results = metaGraph.output(features);
+        INDArray[] results;
 
         HashMap<String, Float> outputValues = new HashMap<>();
         List<AgentDependencyGraph.Node> nodeLayer = this.dependencyGraph.getRoots();
 
+        long setup = System.currentTimeMillis();
+        this.initSetupTime += setup - start;
+
         while(!nodeLayer.isEmpty()) {
+            long layerStart = System.currentTimeMillis();
+
+            results = metaGraph.output(features);
+
+            long layerOutputTime = System.currentTimeMillis();
+            this.outputTime = layerOutputTime - layerStart;
+
             // Get output names for all nodes in layer
             List<String> layerOutputs = new ArrayList<>();
             for (AgentDependencyGraph.Node node : nodeLayer) {
@@ -136,6 +157,9 @@ public class MetaDecisionAgent {
             for(int i = 0; i < this.outputs.length; i++){
                 outputValues.put(this.outputs[i], results[i].getFloat(0));
             }
+
+            long layerSetup = System.currentTimeMillis();
+            this.layerSetupTime += layerSetup - layerOutputTime;
 
             // Choose action from layer, either random or the highest value
             String chosenAction;
@@ -155,6 +179,9 @@ public class MetaDecisionAgent {
                 System.out.println("Best: " + bestAction);
                 chosenAction = bestAction;
             }
+
+            long layerDecision = System.currentTimeMillis();
+            this.layerDecisionTime += layerDecision - layerSetup;
 
             // Choose action from last step
             actions.add(chosenAction);
@@ -178,7 +205,9 @@ public class MetaDecisionAgent {
             String[] actionArray = new String[actions.size()];
             actions.toArray(actionArray);
             features = this.getState(input, actionArray);
-            results = metaGraph.output(features);
+
+            long layerCleanup = System.currentTimeMillis();
+            layerCleanupTime += layerCleanup - layerDecision;
         }
 
         if(iters % 100 == 0) {
@@ -218,6 +247,14 @@ public class MetaDecisionAgent {
     }
 
     public ArrayList<ArrayList<Integer>> getAgentInds() { return this.agentInds; }
+
+    public void printEvalSummary(){
+        System.out.println("Total time for eval initialization: " + (initSetupTime / evals) + "ms");
+        System.out.println("Total time for eval initialization: " + (outputTime / evals) + "ms");
+        System.out.println("Total time for eval initialization: " + (layerSetupTime / evals) + "ms");
+        System.out.println("Total time for eval initialization: " + (layerDecisionTime / evals) + "ms");
+        System.out.println("Total time for eval initialization: " + (layerCleanupTime / evals) + "ms");
+    }
 
     private List<String> buildEnvironmentInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
         this.addInput(builder, "Screen", InputType.convolutionalFlat(MetaDecisionAgent.size, MetaDecisionAgent.size,4));

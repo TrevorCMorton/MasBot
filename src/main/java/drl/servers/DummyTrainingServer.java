@@ -3,16 +3,32 @@ package drl.servers;
 import drl.AgentDependencyGraph;
 import drl.MetaDecisionAgent;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
+
+import java.io.File;
 
 public class DummyTrainingServer implements ITrainingServer {
     private ComputationGraph graph;
     private AgentDependencyGraph agentDependencyGraph;
 
-    public DummyTrainingServer(AgentDependencyGraph dependencyGraph) {
+    public DummyTrainingServer(AgentDependencyGraph dependencyGraph, String filePath) throws Exception{
         this.agentDependencyGraph = dependencyGraph;
-        MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, .5, 3);
-        this.graph = agent.getMetaGraph();
+
+        File pretrained = new File(filePath);
+
+        if(pretrained.exists()){
+            System.out.println("Loading model from file");
+            ComputationGraph model = ModelSerializer.restoreComputationGraph(pretrained, true);
+            this.graph = model;
+            System.out.println(model.summary());
+        }
+        else{
+            MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, this.getProb(), 3);
+            this.graph = agent.getMetaGraph();
+            dependencyGraph.resetNodes();
+            System.out.println(agent.getMetaGraph().summary());
+        }
     }
 
     @Override
@@ -47,7 +63,7 @@ public class DummyTrainingServer implements ITrainingServer {
 
     @Override
     public double getProb() {
-        return 0;
+        return 1;
     }
 
     @Override

@@ -141,17 +141,22 @@ public class LocalTrainingServer implements ITrainingServer{
         ServerSocket ss = new ServerSocket(LocalTrainingServer.port);
         while(true) {
             synchronized (server.threads) {
+                LinkedList<Long> badThreads = new LinkedList<>();
                 for (long creationTime : server.threads.keySet()) {
                     if (System.currentTimeMillis() - creationTime > 600000) {
                         Thread badThread = server.threads.get(creationTime);
-                        badThread.interrupt();
-                        server.threads.remove(creationTime);
+                        if(badThread.isAlive()) {
+                            badThread.interrupt();
+                        }
+                        badThreads.add(creationTime);
                     }
+                }
+                for(long creationTime : badThreads) {
+                    server.threads.remove(creationTime);
                 }
             }
 
             Socket mainSocket = ss.accept();
-
             while(availablePorts.isEmpty()) {
                 Thread.sleep(100);
             }
@@ -159,13 +164,15 @@ public class LocalTrainingServer implements ITrainingServer{
 
             ObjectOutputStream mainStream = new ObjectOutputStream(mainSocket.getOutputStream());
             mainStream.writeObject(port);
+            mainSocket.close();
 
+            ServerSocket connectionServer = new ServerSocket(port);
+            Socket socket = connectionServer.accept();
             Runnable r = new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        ServerSocket connectionServer = new ServerSocket(port);
-                        Socket socket = connectionServer.accept();
+
                         socket.setSoTimeout(600000);
                         System.out.println("Client connected on port " + port);
 
@@ -185,7 +192,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                             float score = (float) input.readObject();
 
                                             if (server.dataPoints.size() % 100 == 0) {
-                                                server.writeStateToImage(startState, "start");
+                                                //server.writeStateToImage(startState, "start");
                                             }
 
                                             server.addData(startState, endState, masks, score);
@@ -239,8 +246,6 @@ public class LocalTrainingServer implements ITrainingServer{
             synchronized (server.threads) {
                 server.threads.put(creationTime, sockThread);
             }
-
-            mainSocket.close();
         }
     }
 
