@@ -22,13 +22,18 @@ public class NetworkTrainingServer implements ITrainingServer{
     private boolean sendingData;
     private boolean run;
 
-    public NetworkTrainingServer(String url, int port){
+    public NetworkTrainingServer(String url){
         dataMessages = new LinkedList<>();
         sendData = true;
         sendingData = true;
         run = true;
 
         try {
+            Socket tempSocket = new Socket(url, LocalTrainingServer.port);
+
+            ObjectInputStream connectionIn = new ObjectInputStream(tempSocket.getInputStream());
+            int port = (int)connectionIn.readObject();
+
             this.socket = new Socket(url, port);
 
             this.rawOutput = this.socket.getOutputStream();
@@ -36,7 +41,7 @@ public class NetworkTrainingServer implements ITrainingServer{
             this.objectOutput = new ObjectOutputStream(rawOutput);
             this.objectInput = new ObjectInputStream(rawInput);
         }
-        catch (IOException e){
+        catch (Exception e){
             System.out.println("Failed to initialze server connection");
         }
     }

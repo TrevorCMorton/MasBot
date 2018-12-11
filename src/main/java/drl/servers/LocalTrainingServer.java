@@ -36,7 +36,7 @@ import java.util.concurrent.Executors;
 import static org.nd4j.linalg.ops.transforms.Transforms.abs;
 
 public class LocalTrainingServer implements ITrainingServer{
-    public static final int[] ports = { 1612, 1613, 1614, 1615, 1616 };
+    public static final int port = 1612;
     public static final long iterationsToTrain = 1000000;
 
     private HashMap<GraphMetadata, ComputationGraph> graphs;
@@ -53,7 +53,6 @@ public class LocalTrainingServer implements ITrainingServer{
     private int pointsGathered;
     private int iterations;
     private int pointWait;
-    private HashMap<Integer, Integer> portConnections;
     private boolean run;
     private boolean paused;
 
@@ -68,7 +67,6 @@ public class LocalTrainingServer implements ITrainingServer{
 
         this.dependencyGraph = dependencyGraph;
 
-        this.portConnections = new HashMap<>();
         this.run = true;
         this.paused = false;
 
@@ -130,98 +128,102 @@ public class LocalTrainingServer implements ITrainingServer{
 
         Queue<Integer> availablePorts = new LinkedList<>();
 
-        for(int port : LocalTrainingServer.ports){
-            availablePorts.add(port);
-        }
-
         Nd4j.getMemoryManager().invokeGc();
 
+        for(int i = 0; i < 1000; i++){
+            availablePorts.add(LocalTrainingServer.port + i);
+        }
+
         System.out.println("Accepting Clients");
-
+        ServerSocket ss = new ServerSocket(LocalTrainingServer.port);
         while(true) {
-            if(!availablePorts.isEmpty()) {
-                int port = availablePorts.poll();
-                server.portConnections.put(port, 0);
+            Socket mainSocket = ss.accept();
 
-                Runnable r = new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            ServerSocket ss = new ServerSocket(port);
-                            Socket socket = ss.accept();
-                            server.portConnections.put(port, server.portConnections.get(port) + 1);
-                            socket.setSoTimeout(600000);
-                            System.out.println("Client connected on port " + port);
-
-                            OutputStream rawOutput = socket.getOutputStream();
-                            ObjectOutputStream output = new ObjectOutputStream(rawOutput);
-                            ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
-
-                            try {
-                                while (true) {
-                                    String message = (String) input.readObject();
-                                    switch (message) {
-                                        case ("addData"):
-                                            try {
-                                                INDArray[] startState = (INDArray[]) input.readObject();
-                                                INDArray[] endState = (INDArray[]) input.readObject();
-                                                INDArray[] masks = (INDArray[]) input.readObject();
-                                                float score = (float) input.readObject();
-
-                                                if (server.dataPoints.size() % 100 == 0) {
-                                                    server.writeStateToImage(startState, "start");
-                                                }
-
-                                                server.addData(startState, endState, masks, score);
-                                            } catch (Exception e) {
-                                                System.out.println("Error while attempting to upload a data point, point destroyed");
-                                            }
-                                            break;
-                                        case ("getUpdatedNetwork"):
-                                            Iterator<GraphMetadata> iterator = server.graphs.keySet().iterator();
-                                            GraphMetadata randomData = iterator.next();
-                                            for (int i = 1; i < server.random.nextInt(server.graphs.size()); i++) {
-                                                randomData = iterator.next();
-                                            }
-
-                                            Path modelPath = Paths.get(server.getModelName(randomData));
-                                            byte[] modelBytes = Files.readAllBytes(modelPath);
-                                            output.writeObject(modelBytes);
-                                            break;
-                                        case ("getDependencyGraph"):
-                                            output.writeObject(server.getDependencyGraph());
-                                            break;
-                                        case ("getProb"):
-                                            double prob = server.getProb();
-                                            output.writeObject(prob);
-                                            break;
-                                        default:
-                                            System.out.println("Got unregistered input, exiting because of " + message);
-                                            throw new InvalidObjectException("Improper network request");
-                                    }
-                                }
-                            } catch (Exception e) {
-                                e.printStackTrace(System.out);
-                                System.out.println("Client disconnected from port " + port);
-                            } finally {
-                                System.out.println("Closing Server Socket");
-                                socket.close();
-                                ss.close();
-                                Nd4j.getMemoryManager().invokeGc();
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace(System.out);
-                            System.out.println("Error opening port " + port);
-                        }
-                        availablePorts.add(port);
-                    }
-                };
-                Thread sockThread = new Thread(r);
-                sockThread.start();
-            }
-            else {
+            while(availablePorts.isEmpty()) {
                 Thread.sleep(100);
             }
+            int port = availablePorts.poll();
+
+            ObjectOutputStream mainStream = new ObjectOutputStream(mainSocket.getOutputStream());
+            mainStream.writeObject(port);
+
+            Runnable r = new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        ServerSocket connectionServer = new ServerSocket(port);
+                        Socket socket = connectionServer.accept();
+                        socket.setSoTimeout(600000);
+                        System.out.println("Client connected on port " + port);
+
+                        OutputStream rawOutput = socket.getOutputStream();
+                        ObjectOutputStream output = new ObjectOutputStream(rawOutput);
+                        ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
+
+                        try {
+                            while (true) {
+                                String message = (String) input.readObject();
+                                switch (message) {
+                                    case ("addData"):
+                                        try {
+                                            INDArray[] startState = (INDArray[]) input.readObject();
+                                            INDArray[] endState = (INDArray[]) input.readObject();
+                                            INDArray[] masks = (INDArray[]) input.readObject();
+                                            float score = (float) input.readObject();
+
+                                            if (server.dataPoints.size() % 100 == 0) {
+                                                server.writeStateToImage(startState, "start");
+                                            }
+
+                                            server.addData(startState, endState, masks, score);
+                                        } catch (Exception e) {
+                                            System.out.println("Error while attempting to upload a data point, point destroyed");
+                                        }
+                                        break;
+                                    case ("getUpdatedNetwork"):
+                                        Iterator<GraphMetadata> iterator = server.graphs.keySet().iterator();
+                                        GraphMetadata randomData = iterator.next();
+                                        for (int i = 1; i < server.random.nextInt(server.graphs.size()); i++) {
+                                            randomData = iterator.next();
+                                        }
+
+                                        Path modelPath = Paths.get(server.getModelName(randomData));
+                                        byte[] modelBytes = Files.readAllBytes(modelPath);
+                                        output.writeObject(modelBytes);
+                                        break;
+                                    case ("getDependencyGraph"):
+                                        output.writeObject(server.getDependencyGraph());
+                                        break;
+                                    case ("getProb"):
+                                        double prob = server.getProb();
+                                        output.writeObject(prob);
+                                        break;
+                                    default:
+                                        System.out.println("Got unregistered input, exiting because of " + message);
+                                        throw new InvalidObjectException("Improper network request");
+                                }
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace(System.out);
+                            System.out.println("Client disconnected from port " + port);
+                        } finally {
+                            System.out.println("Closing Server Socket");
+                            socket.close();
+                            connectionServer.close();
+                            Nd4j.getMemoryManager().invokeGc();
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace(System.out);
+                        System.out.println("Error opening port " + port);
+                    }
+                    availablePorts.add(port);
+                }
+            };
+            
+            Thread sockThread = new Thread(r);
+            sockThread.start();
+
+            mainSocket.close();
         }
     }
 
@@ -453,7 +455,7 @@ public class LocalTrainingServer implements ITrainingServer{
             File f = new File(fileName + ".jpg");
             BufferedImage img = new BufferedImage(this.inputSize, this.inputSize, BufferedImage.TYPE_3BYTE_BGR);
 
-            INDArray stateImage = state[0].getColumn(3);
+            INDArray stateImage = state[0].getColumn(3).mul(255);
             int[] pixelValues = Nd4j.toFlattened(stateImage).toIntVector();
 
             int index = 0;
