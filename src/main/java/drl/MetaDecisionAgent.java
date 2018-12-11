@@ -34,12 +34,12 @@ public class MetaDecisionAgent {
     private int commDepth;
     private ArrayList<ArrayList<Integer>> agentInds;
 
-    private long evals = 0;
-    private long initSetupTime = 0;
-    private long outputTime = 0;
-    private long layerSetupTime = 0;
-    private long layerDecisionTime = 0;
-    private long layerCleanupTime = 0;
+    private long evals;
+    private long initSetupTime;
+    private long outputTime;
+    private long layerSetupTime;
+    private long layerDecisionTime;
+    private long layerCleanupTime;
 
     public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, double prob, int commDepth){
         this.dependencyGraph = dependencyGraph;
@@ -53,7 +53,12 @@ public class MetaDecisionAgent {
 
         this.dependencyGraph.resetNodes();
 
-
+        evals = 0;
+        initSetupTime = 0;
+        outputTime = 0;
+        layerSetupTime = 0;
+        layerDecisionTime = 0;
+        layerCleanupTime = 0;
 
         ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
             .seed(123)
@@ -145,7 +150,7 @@ public class MetaDecisionAgent {
             results = metaGraph.output(features);
 
             long layerOutputTime = System.currentTimeMillis();
-            this.outputTime = layerOutputTime - layerStart;
+            this.outputTime += layerOutputTime - layerStart;
 
             // Get output names for all nodes in layer
             List<String> layerOutputs = new ArrayList<>();
@@ -249,11 +254,11 @@ public class MetaDecisionAgent {
     public ArrayList<ArrayList<Integer>> getAgentInds() { return this.agentInds; }
 
     public void printEvalSummary(){
-        System.out.println("Total time for eval initialization: " + (initSetupTime / evals) + "ms");
-        System.out.println("Total time for eval initialization: " + (outputTime / evals) + "ms");
-        System.out.println("Total time for eval initialization: " + (layerSetupTime / evals) + "ms");
-        System.out.println("Total time for eval initialization: " + (layerDecisionTime / evals) + "ms");
-        System.out.println("Total time for eval initialization: " + (layerCleanupTime / evals) + "ms");
+        System.out.println("Average time for eval initialization: " + (initSetupTime / evals) + "ms");
+        System.out.println("Average time for model output: " + (outputTime / evals) + "ms");
+        System.out.println("Average time for layer setup: " + (layerSetupTime / evals) + "ms");
+        System.out.println("Average time for layer decisions: " + (layerDecisionTime / evals) + "ms");
+        System.out.println("Average time for layer cleanup: " + (layerCleanupTime / evals) + "ms");
     }
 
     private List<String> buildEnvironmentInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
