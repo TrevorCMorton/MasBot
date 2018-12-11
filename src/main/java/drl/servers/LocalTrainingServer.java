@@ -56,6 +56,8 @@ public class LocalTrainingServer implements ITrainingServer{
     private boolean run;
     private boolean paused;
 
+    private HashMap<Long, Thread> threads;
+
     public LocalTrainingServer(boolean connectFromNetwork, int maxReplaySize, int batchSize, AgentDependencyGraph dependencyGraph){
         this.batchSize = batchSize;
         this.connectFromNetwork = connectFromNetwork;
@@ -69,6 +71,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
         this.run = true;
         this.paused = false;
+        this.threads = new HashMap<>();
 
         this.graphs = new HashMap<>();
         this.targetGraphs = new HashMap<>();
@@ -130,13 +133,23 @@ public class LocalTrainingServer implements ITrainingServer{
 
         Nd4j.getMemoryManager().invokeGc();
 
-        for(int i = 1; i < 10000; i++){
+        for(int i = 1; i < 100; i++){
             availablePorts.add(LocalTrainingServer.port + i);
         }
 
         System.out.println("Accepting Clients");
         ServerSocket ss = new ServerSocket(LocalTrainingServer.port);
         while(true) {
+            synchronized (server.threads) {
+                for (long creationTime : server.threads.keySet()) {
+                    if (System.currentTimeMillis() - creationTime > 600000) {
+                        Thread badThread = server.threads.get(creationTime);
+                        badThread.interrupt();
+                        server.threads.remove(creationTime);
+                    }
+                }
+            }
+
             Socket mainSocket = ss.accept();
 
             while(availablePorts.isEmpty()) {
@@ -220,8 +233,12 @@ public class LocalTrainingServer implements ITrainingServer{
                 }
             };
 
+            long creationTime = System.currentTimeMillis();
             Thread sockThread = new Thread(r);
             sockThread.start();
+            synchronized (server.threads) {
+                server.threads.put(creationTime, sockThread);
+            }
 
             mainSocket.close();
         }
@@ -294,6 +311,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
                     if (metaData.targetRotation != 0 && iterations % metaData.targetRotation == 0) {
                         this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true));
+                        Nd4j.getMemoryManager().invokeGc();
                     }
 
                     if (iterations % 100 == 0) {

@@ -42,6 +42,7 @@ public class NetworkTrainingServer implements ITrainingServer{
             this.objectInput = new ObjectInputStream(rawInput);
         }
         catch (Exception e){
+            e.printStackTrace(System.out);
             System.out.println("Failed to initialze server connection");
         }
     }
