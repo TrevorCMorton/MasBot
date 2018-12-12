@@ -191,8 +191,8 @@ public class LocalTrainingServer implements ITrainingServer{
                                             INDArray[] masks = (INDArray[]) input.readObject();
                                             float score = (float) input.readObject();
 
-                                            if (server.dataPoints.size() % 100 == 0) {
-                                                //server.writeStateToImage(startState, "start");
+                                            if (server.dataPoints.size() % 10000 == 100) {
+                                                server.writeStateToImage(startState, "start");
                                             }
 
                                             server.addData(startState, endState, masks, score);

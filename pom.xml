@@ -114,7 +114,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>MeleeRunner</mainClass>
+                            <mainClass>drl.servers.LocalTrainingServer</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
