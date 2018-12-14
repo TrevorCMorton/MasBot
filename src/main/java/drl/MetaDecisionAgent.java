@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 
 public class MetaDecisionAgent {
-    public static final int size = 168;
+    public static final int size = 100;
 
     private ComputationGraph metaGraph;
     private AgentDependencyGraph dependencyGraph;
