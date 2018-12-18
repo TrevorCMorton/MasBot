@@ -252,6 +252,7 @@ public class LocalTrainingServer implements ITrainingServer{
     @Override
     public void run() {
         long batchTime = 0;
+        long concatTime = 0;
         long buildTime = 0;
         long fitTime = 0;
         while(this.run){
@@ -279,9 +280,11 @@ public class LocalTrainingServer implements ITrainingServer{
                     }
                 }
 
+                long batch = System.currentTimeMillis();
+
                 DataPoint cumulativeData = new DataPoint(this.concatSet(startStates), this.concatSet(endStates), this.concatSet(labels), this.concatSet(masks));
 
-                long batch = System.currentTimeMillis();
+                long concat = System.currentTimeMillis();
 
                 for (GraphMetadata metaData : this.graphs.keySet()) {
                     long graphStart = System.currentTimeMillis();
@@ -328,6 +331,7 @@ public class LocalTrainingServer implements ITrainingServer{
                     long graphFit = System.currentTimeMillis();
 
                     batchTime += batch - startTime;
+                    concatTime += concat - batch;
                     buildTime += graphBuild - graphStart;
                     fitTime += graphFit - graphBuild;
 
@@ -335,6 +339,7 @@ public class LocalTrainingServer implements ITrainingServer{
                         this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true));
                         Nd4j.getMemoryManager().invokeGc();
                         System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / metaData.targetRotation));
+                        System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / metaData.targetRotation));
                         System.out.println("Total build time: " + buildTime + " average was " + (buildTime / metaData.targetRotation));
                         System.out.println("Total fit time: " + fitTime + " average was " + (fitTime / metaData.targetRotation));
                         batchTime = 0;
