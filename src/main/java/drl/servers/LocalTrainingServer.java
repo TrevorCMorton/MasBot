@@ -343,6 +343,7 @@ public class LocalTrainingServer implements ITrainingServer{
                         System.out.println("Total build time: " + buildTime + " average was " + (buildTime / metaData.targetRotation));
                         System.out.println("Total fit time: " + fitTime + " average was " + (fitTime / metaData.targetRotation));
                         batchTime = 0;
+                        concatTime = 0;
                         buildTime = 0;
                         fitTime = 0;
 
