@@ -33,7 +33,6 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static org.nd4j.linalg.indexing.NDArrayIndex.interval;
 import static org.nd4j.linalg.ops.transforms.Transforms.abs;
 
 public class LocalTrainingServer implements ITrainingServer{
@@ -252,9 +251,8 @@ public class LocalTrainingServer implements ITrainingServer{
 
     @Override
     public void run() {
-        long prebuildTime = 0;
-        long concatTime = 0;
         long batchTime = 0;
+        long concatTime = 0;
         long buildTime = 0;
         long fitTime = 0;
         while(this.run){
@@ -265,15 +263,13 @@ public class LocalTrainingServer implements ITrainingServer{
             if (!paused && sufficientDataGathered && iterations < pointsGathered) {
                 long startTime = System.currentTimeMillis();
 
-                int prebuildSize = (this.dataPoints.size() / this.batchSize) * this.batchSize;
-
-                INDArray[][] startStates = new INDArray[prebuildSize][];
-                INDArray[][] endStates = new INDArray[prebuildSize][];
-                INDArray[][] labels = new INDArray[prebuildSize][];
-                INDArray[][] masks = new INDArray[prebuildSize][];
+                INDArray[][] startStates = new INDArray[this.batchSize][];
+                INDArray[][] endStates = new INDArray[this.batchSize][];
+                INDArray[][] labels = new INDArray[this.batchSize][];
+                INDArray[][] masks = new INDArray[this.batchSize][];
 
                 synchronized (this.dataPoints) {
-                    for (int i = 0; i < prebuildSize; i++) {
+                    for (int i = 0; i < this.batchSize; i++) {
                         int index = (int) (Math.random() * this.dataPoints.size());
                         DataPoint data = this.dataPoints.get(index);
 
@@ -284,101 +280,81 @@ public class LocalTrainingServer implements ITrainingServer{
                     }
                 }
 
-                long prebuild = System.currentTimeMillis();
+                long batch = System.currentTimeMillis();
 
-                INDArray[] prebuiltStart = this.concatSet(startStates);
-                INDArray[] prebuiltEnd = this.concatSet(endStates);
-                INDArray[] prebuiltLabels = this.concatSet(labels);
-                INDArray[] prebuiltMasks = this.concatSet(masks);
+                DataPoint cumulativeData = new DataPoint(this.concatSet(startStates), this.concatSet(endStates), this.concatSet(labels), this.concatSet(masks));
 
                 long concat = System.currentTimeMillis();
 
-                for(int j = 0; j < prebuildSize / this.batchSize; j++) {
+                for (GraphMetadata metaData : this.graphs.keySet()) {
+                    long graphStart = System.currentTimeMillis();
 
-                    long batch = System.currentTimeMillis();
+                    ComputationGraph graph = this.graphs.get(metaData);
+                    ComputationGraph targetGraph = this.targetGraphs.get(metaData);
 
-                    INDArray[] batchStart = this.splitSet(prebuiltStart, j * this.batchSize, (j + 1) * this.batchSize);
-                    INDArray[] batchEnd = this.splitSet(prebuiltEnd, j * this.batchSize, (j + 1) * this.batchSize);
-                    INDArray[] batchLabels = this.splitSet(prebuiltLabels, j * this.batchSize, (j + 1) * this.batchSize);
-                    INDArray[] batchMasks = this.splitSet(prebuiltMasks, j * this.batchSize, (j + 1) * this.batchSize);
+                    INDArray[] curLabels = graph.output(cumulativeData.getEndState());
+                    INDArray[] targetLabels = targetGraph.output(cumulativeData.getEndState());
 
-                    DataPoint cumulativeData = new DataPoint(batchStart, batchEnd, batchLabels, batchMasks);
+                    INDArray[] targetMaxs = new INDArray[curLabels.length];
 
-                    long batchCom = System.currentTimeMillis();
+                    for (ArrayList<Integer> inds : this.dependencyGraph.getAgentInds(this.outputs)) {
+                        int concatInd = 0;
+                        INDArray[] curIndLabels = new INDArray[inds.size()];
+                        for (int i : inds) {
+                            curIndLabels[concatInd] = curLabels[i];
+                            concatInd++;
+                        }
+                        INDArray max = Nd4j.concat(1, curIndLabels);
+                        max = Nd4j.max(max, 1);
 
-                    for (GraphMetadata metaData : this.graphs.keySet()) {
-                        long graphStart = System.currentTimeMillis();
-
-                        ComputationGraph graph = this.graphs.get(metaData);
-                        ComputationGraph targetGraph = this.targetGraphs.get(metaData);
-
-                        INDArray[] curLabels = graph.output(cumulativeData.getEndState());
-                        INDArray[] targetLabels = targetGraph.output(cumulativeData.getEndState());
-
-                        INDArray[] targetMaxs = new INDArray[curLabels.length];
-
-                        for (ArrayList<Integer> inds : this.dependencyGraph.getAgentInds(this.outputs)) {
-                            int concatInd = 0;
-                            INDArray[] curIndLabels = new INDArray[inds.size()];
-                            for (int i : inds) {
-                                curIndLabels[concatInd] = curLabels[i];
-                                concatInd++;
-                            }
-                            INDArray max = Nd4j.concat(1, curIndLabels);
-                            max = Nd4j.max(max, 1);
-
-                            INDArray[] maxBools = new INDArray[curLabels.length];
-                            for (int i : inds) {
-                                maxBools[i] = curLabels[i].eq(max);
-                            }
-
-                            INDArray targetMax = Nd4j.zeros(targetLabels[0].shape());
-                            for (int i : inds) {
-                                targetMax = targetMax.add(maxBools[i].mul(targetLabels[i]));
-                            }
-
-                            for (int i : inds) {
-                                targetMaxs[i] = targetMax;
-                            }
+                        INDArray[] maxBools = new INDArray[curLabels.length];
+                        for (int i : inds) {
+                            maxBools[i] = curLabels[i].eq(max);
                         }
 
-                        MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(targetMaxs, metaData.decayRate);
-
-                        long graphBuild = System.currentTimeMillis();
-
-                        graph.fit(dataSet);
-
-                        long graphFit = System.currentTimeMillis();
-
-                        prebuildTime += prebuild - startTime;
-                        concatTime += concat - prebuild;
-                        batchTime += batchCom - batch;
-                        buildTime += graphBuild - graphStart;
-                        fitTime += graphFit - graphBuild;
-
-                        if (metaData.targetRotation != 0 && iterations % metaData.targetRotation == 0) {
-                            this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true));
-                            Nd4j.getMemoryManager().invokeGc();
-                            System.out.println("Total prebuild time: " + prebuildTime + " average was " + (prebuildTime / metaData.targetRotation));
-                            System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / metaData.targetRotation));
-                            System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / metaData.targetRotation));
-                            System.out.println("Total build time: " + buildTime + " average was " + (buildTime / metaData.targetRotation));
-                            System.out.println("Total fit time: " + fitTime + " average was " + (fitTime / metaData.targetRotation));
-                            prebuildTime = 0;
-                            batchTime = 0;
-                            concatTime = 0;
-                            buildTime = 0;
-                            fitTime = 0;
-
+                        INDArray targetMax = Nd4j.zeros(targetLabels[0].shape());
+                        for (int i : inds) {
+                            targetMax = targetMax.add(maxBools[i].mul(targetLabels[i]));
                         }
 
-                        if (iterations % 100 == 0) {
-                            System.out.println(metaData.getName());
+                        for (int i : inds) {
+                            targetMaxs[i] = targetMax;
                         }
                     }
 
-                    iterations++;
+                    MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(targetMaxs, metaData.decayRate);
+
+                    long graphBuild = System.currentTimeMillis();
+
+                    graph.fit(dataSet);
+
+                    long graphFit = System.currentTimeMillis();
+
+                    batchTime += batch - startTime;
+                    concatTime += concat - batch;
+                    buildTime += graphBuild - graphStart;
+                    fitTime += graphFit - graphBuild;
+
+                    if (metaData.targetRotation != 0 && iterations % metaData.targetRotation == 0) {
+                        this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true));
+                        Nd4j.getMemoryManager().invokeGc();
+                        System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / metaData.targetRotation));
+                        System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / metaData.targetRotation));
+                        System.out.println("Total build time: " + buildTime + " average was " + (buildTime / metaData.targetRotation));
+                        System.out.println("Total fit time: " + fitTime + " average was " + (fitTime / metaData.targetRotation));
+                        batchTime = 0;
+                        concatTime = 0;
+                        buildTime = 0;
+                        fitTime = 0;
+
+                    }
+
+                    if (iterations % 100 == 0) {
+                        System.out.println(metaData.getName());
+                    }
                 }
+
+                iterations++;
 
             }
             else {
@@ -522,16 +498,6 @@ public class LocalTrainingServer implements ITrainingServer{
             }
 
             result[j] = Nd4j.concat(0, toConcat);
-        }
-
-        return result;
-    }
-
-    private INDArray[] splitSet(INDArray[] set, int start, int end){
-        INDArray[] result = new INDArray[set.length];
-
-        for(int i = 0; i < set.length; i++){
-            result[i] = set[i].get(interval(start, end));
         }
 
         return result;
