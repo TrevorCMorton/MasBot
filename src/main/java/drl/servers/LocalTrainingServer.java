@@ -251,12 +251,16 @@ public class LocalTrainingServer implements ITrainingServer{
 
     @Override
     public void run() {
+        long batchTime = 0;
+        long buildTime = 0;
+        long fitTime = 0;
         while(this.run){
             System.out.print("");
 
             boolean sufficientDataGathered = this.dataPoints.size() > this.batchSize;
 
             if (!paused && sufficientDataGathered && iterations < pointsGathered) {
+                long startTime = System.currentTimeMillis();
 
                 INDArray[][] startStates = new INDArray[this.batchSize][];
                 INDArray[][] endStates = new INDArray[this.batchSize][];
@@ -277,7 +281,11 @@ public class LocalTrainingServer implements ITrainingServer{
 
                 DataPoint cumulativeData = new DataPoint(this.concatSet(startStates), this.concatSet(endStates), this.concatSet(labels), this.concatSet(masks));
 
+                long batch = System.currentTimeMillis();
+
                 for (GraphMetadata metaData : this.graphs.keySet()) {
+                    long graphStart = System.currentTimeMillis();
+
                     ComputationGraph graph = this.graphs.get(metaData);
                     ComputationGraph targetGraph = this.targetGraphs.get(metaData);
 
@@ -312,11 +320,27 @@ public class LocalTrainingServer implements ITrainingServer{
                     }
 
                     MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(targetMaxs, metaData.decayRate);
+
+                    long graphBuild = System.currentTimeMillis();
+
                     graph.fit(dataSet);
+
+                    long graphFit = System.currentTimeMillis();
+
+                    batchTime += batch - startTime;
+                    buildTime += graphBuild - graphStart;
+                    fitTime += graphFit - graphBuild;
 
                     if (metaData.targetRotation != 0 && iterations % metaData.targetRotation == 0) {
                         this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true));
                         Nd4j.getMemoryManager().invokeGc();
+                        System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / metaData.targetRotation));
+                        System.out.println("Total build time: " + buildTime + " average was " + (buildTime / metaData.targetRotation));
+                        System.out.println("Total fit time: " + fitTime + " average was " + (fitTime / metaData.targetRotation));
+                        batchTime = 0;
+                        buildTime = 0;
+                        fitTime = 0;
+
                     }
 
                     if (iterations % 100 == 0) {
