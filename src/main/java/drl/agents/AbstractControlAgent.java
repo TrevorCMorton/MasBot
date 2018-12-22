@@ -38,7 +38,7 @@ public abstract class AbstractControlAgent implements IAgent{
                             new DenseLayer.Builder().nOut(1).activation(Activation.IDENTITY).build(),
                             this.name + this.getControlName() + "1")
                     .addLayer(outputName,
-                            new LossLayer.Builder().lossFunction(LossFunctions.LossFunction.SQUARED_LOSS).build(),
+                            new LossLayer.Builder().lossFunction(LossFunctions.LossFunction.L2).build(),
                             outputName + "Internal");
         }
 

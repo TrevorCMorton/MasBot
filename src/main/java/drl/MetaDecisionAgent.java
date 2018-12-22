@@ -62,7 +62,6 @@ public class MetaDecisionAgent {
 
         ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
             .seed(123)
-            .l2(0.0005)
             .weightInit(WeightInit.XAVIER)
             .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
             .updater(new Adam(.00005))
