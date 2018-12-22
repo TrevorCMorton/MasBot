@@ -64,7 +64,7 @@ public class MetaDecisionAgent {
             .seed(123)
             .weightInit(WeightInit.XAVIER)
             .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-            .updater(new Adam(.00005))
+            .updater(new Adam(.000005))
             .graphBuilder();
 
         Collection<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getNodes();
