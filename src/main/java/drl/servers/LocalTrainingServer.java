@@ -5,20 +5,14 @@ import drl.MetaDecisionAgent;
 import drl.agents.IAgent;
 import drl.agents.MeleeButtonAgent;
 import drl.agents.MeleeJoystickAgent;
-import org.apache.commons.io.IOUtils;
-import org.deeplearning4j.api.storage.StatsStorage;
+import drl.collections.IReplayer;
+import drl.collections.RandomReplayer;
+import drl.collections.RankReplayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
-import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.deeplearning4j.ui.api.UIServer;
-import org.deeplearning4j.ui.stats.StatsListener;
-import org.deeplearning4j.ui.storage.FileStatsStorage;
 import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.nd4j.linalg.dataset.MultiDataSet;
-import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
-import org.nd4j.linalg.dataset.api.preprocessor.MultiNormalizerStandardize;
 import org.nd4j.linalg.factory.Nd4j;
 
 import javax.imageio.ImageIO;
@@ -30,8 +24,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static org.nd4j.linalg.ops.transforms.Transforms.abs;
 
@@ -45,7 +37,7 @@ public class LocalTrainingServer implements ITrainingServer{
     private String[] outputs;
     private int inputSize;
 
-    private CircularFifoQueue<DataPoint> dataPoints;
+    private IReplayer<DataPoint> dataPoints;
 
     private int batchSize;
     private Random random;
@@ -64,7 +56,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
         this.pointWait = 5;
 
-        this.dataPoints = new CircularFifoQueue<>(maxReplaySize);
+        this.dataPoints = new RankReplayer<>(maxReplaySize);
         this.random = new Random(324);
 
         this.dependencyGraph = dependencyGraph;
@@ -255,23 +247,47 @@ public class LocalTrainingServer implements ITrainingServer{
         long concatTime = 0;
         long buildTime = 0;
         long fitTime = 0;
+
+        double alpha = .6;
+        double probabilitySum = this.getProbabilitySum(alpha, this.dataPoints.getMaxSize());
+        ArrayList<Integer> probabilityIndexes = this.getProbabilityIntervals(this.batchSize, alpha, this.dataPoints.getMaxSize());
+        INDArray[] blankInput = new INDArray[]{Nd4j.ones(1, 4, 84, 84)};
+        INDArray[] blankLabels = new INDArray[this.outputs.length];
+        for(int i = 0; i < blankLabels.length; i++){
+            blankLabels[i] = Nd4j.ones(1);
+        }
+        this.dataPoints.prepopulate(new DataPoint(blankInput, blankInput, blankLabels, blankLabels));
+
         while(this.run){
             System.out.print("");
 
-            boolean sufficientDataGathered = this.dataPoints.size() > this.batchSize;
+            boolean sufficientDataGathered = true;//this.pointsGathered > this.dataPoints.getMaxSize();
 
-            if (!paused && sufficientDataGathered && iterations < pointsGathered) {
+            if (!paused && sufficientDataGathered /*&& iterations <= pointsGathered*/) {
                 long startTime = System.currentTimeMillis();
 
+                DataPoint[] batchPoints = new DataPoint[this.batchSize];
                 INDArray[][] startStates = new INDArray[this.batchSize][];
                 INDArray[][] endStates = new INDArray[this.batchSize][];
                 INDArray[][] labels = new INDArray[this.batchSize][];
                 INDArray[][] masks = new INDArray[this.batchSize][];
 
+                double beta = .4 + (this.getProb()) * .6;
+                double minP = Math.pow(1.0 / ((double) (this.dataPoints.getMaxSize())), alpha) / probabilitySum;
+                double maxW = Math.pow(this.dataPoints.getMaxSize() * minP, -1.0 * beta);
+                double[] wArray = new double[this.batchSize];
+
                 synchronized (this.dataPoints) {
-                    for (int i = 0; i < this.batchSize; i++) {
-                        int index = (int) (Math.random() * this.dataPoints.size());
-                        DataPoint data = this.dataPoints.get(index);
+                    int lastLabel = 0;
+                    for (int i = 0; i < probabilityIndexes.size(); i++) {
+                        int index = this.random.nextInt(probabilityIndexes.get(i) - lastLabel) + lastLabel;
+                        DataPoint data = this.dataPoints.get(index - i);
+                        batchPoints[i] = data;
+
+                        double p = Math.pow(1.0 / ((double) (index + 1)), alpha) / probabilitySum;
+                        wArray[i] = Math.pow(this.dataPoints.getMaxSize() * p, -1.0 * beta) / maxW;
+
+                        lastLabel = probabilityIndexes.get(i);
 
                         startStates[i] = data.getStartState();
                         endStates[i] = data.getEndState();
@@ -279,6 +295,8 @@ public class LocalTrainingServer implements ITrainingServer{
                         masks[i] = data.getMasks();
                     }
                 }
+
+                INDArray w = Nd4j.create(wArray, new int[] {wArray.length, 1}, 'c');
 
                 long batch = System.currentTimeMillis();
 
@@ -324,6 +342,29 @@ public class LocalTrainingServer implements ITrainingServer{
 
                     MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(targetMaxs, metaData.decayRate);
 
+                    INDArray[] error = new INDArray[dataSet.getLabels().length];
+                    INDArray absTotalError = Nd4j.zeros(w.shape());
+                    INDArray[] qLabels = dataSet.getLabels();
+                    INDArray[] qMasks = dataSet.getLabelsMaskArrays();
+
+                    for(int i = 0; i < error.length; i++){
+                        error[i] = qLabels[i].sub(curLabels[i]);
+                        absTotalError.add(abs(error[i].mul(qMasks[i])));
+                    }
+
+                    INDArray[] weightedLabels = new INDArray[dataSet.getLabels().length];
+
+                    for(int i = 0; i < weightedLabels.length; i++){
+                        weightedLabels[i] = curLabels[i].add(error[i].mul(w));
+                    }
+
+                    dataSet.setLabels(weightedLabels);
+
+                    double[] errors = absTotalError.toDoubleVector();
+                    for(int k = 0; k < batchPoints.length; k++){
+                        this.dataPoints.add(errors[k], batchPoints[k]);
+                    }
+
                     long graphBuild = System.currentTimeMillis();
 
                     graph.fit(dataSet);
@@ -337,7 +378,11 @@ public class LocalTrainingServer implements ITrainingServer{
 
                     if (metaData.targetRotation != 0 && iterations % metaData.targetRotation == 0) {
                         this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true));
+                    }
+
+                    if (iterations % 100 == 0) {
                         Nd4j.getMemoryManager().invokeGc();
+                        System.out.println(Arrays.toString(wArray) + " " + Arrays.toString(errors));
                         System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / metaData.targetRotation));
                         System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / metaData.targetRotation));
                         System.out.println("Total build time: " + buildTime + " average was " + (buildTime / metaData.targetRotation));
@@ -346,11 +391,6 @@ public class LocalTrainingServer implements ITrainingServer{
                         concatTime = 0;
                         buildTime = 0;
                         fitTime = 0;
-
-                    }
-
-                    if (iterations % 100 == 0) {
-                        System.out.println(metaData.getName());
                     }
                 }
 
@@ -385,7 +425,7 @@ public class LocalTrainingServer implements ITrainingServer{
         DataPoint data = new DataPoint(startState, endState, labels, masks);
 
         synchronized (this.dataPoints){
-            this.dataPoints.add(data);
+            this.dataPoints.add(100, data);
         }
 
         pointsGathered++;
@@ -501,6 +541,34 @@ public class LocalTrainingServer implements ITrainingServer{
         }
 
         return result;
+    }
+
+    private ArrayList<Integer> getProbabilityIntervals(int batchSize, double alpha, int totalSize){
+        double probSum = this.getProbabilitySum(alpha, totalSize);
+
+        ArrayList<Integer> intervals = new ArrayList<>();
+
+        double equivalenceSize = 1.0 / batchSize;
+        double tierSum = 0;
+        for(int i = 0; i < totalSize; i++){
+            tierSum += Math.pow(1.0 / ((double)(i + 1)), alpha) / probSum;
+            if(tierSum >= equivalenceSize){
+                intervals.add(i);
+                tierSum = 0;
+            }
+        }
+
+        intervals.add(totalSize);
+
+        return intervals;
+    }
+
+    private double getProbabilitySum(double alpha, int totalSize){
+        double probSum = 0;
+        for(int i = 0; i < totalSize; i++){
+            probSum += Math.pow(1.0 / ((double)(i + 1)), alpha);
+        }
+        return probSum;
     }
 
     private void writeStateToImage(INDArray[] state, String fileName){
