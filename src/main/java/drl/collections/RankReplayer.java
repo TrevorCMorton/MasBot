@@ -13,10 +13,12 @@ public class RankReplayer<T> implements IReplayer<T>{
 
     @Override
     public void add(double error, T data) {
-        root = addHelper(new Node(error, data), root);
+        this.root = addHelper(new Node(error, data), this.root);
+        this.verifyHelper(this.root);
 
         if(this.size() > maxSize){
             this.root = removeLast(this.root);
+            this.verifyHelper(this.root);
         }
     }
 
@@ -51,17 +53,15 @@ public class RankReplayer<T> implements IReplayer<T>{
 
     @Override
     public T get(int i) {
-        if(this.verify()){
-            System.out.println("Verification failed");
-        }
-
         if(i > this.size() - 1){
             System.out.println("Attempting access out of bounds, reducing index to " + (i - 1));
             return this.get(i - 1);
         }
         else {
             T temp = getHelper(i, this.root);
+            this.verifyHelper(this.root);
             this.root = remove(i, this.root);
+            this.verifyHelper(this.root);
             return temp;
         }
     }
