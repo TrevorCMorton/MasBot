@@ -36,16 +36,6 @@ public class RankReplayer<T> implements IReplayer<T>{
             n.right = addHelper(toAdd, n.right);
             n.rightCount += toAdd.leftCount + toAdd.rightCount + 1;
         }
-        else if(n.key == toAdd.key){
-            if(n.leftCount > n.rightCount){
-                n.right = addHelper(toAdd, n.right);
-                n.rightCount += toAdd.leftCount + toAdd.rightCount + 1;
-            }
-            else{
-                n.left = addHelper(toAdd, n.left);
-                n.leftCount += toAdd.leftCount + toAdd.rightCount + 1;
-            }
-        }
         else{
             n.left = addHelper(toAdd, n.left);
             n.leftCount += toAdd.leftCount + toAdd.rightCount + 1;
