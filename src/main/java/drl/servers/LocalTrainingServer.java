@@ -93,10 +93,9 @@ public class LocalTrainingServer implements ITrainingServer{
             String[] params = line.split(" ");
 
             float decayRate = Float.parseFloat(params[0]);
-            int commDepth = Integer.parseInt(params[1]);
-            int targetRotation = Integer.parseInt(params[2]);
+            int targetRotation = Integer.parseInt(params[1]);
 
-            GraphMetadata metaData = new GraphMetadata(replaySize, batchSize, decayRate, commDepth, targetRotation);
+            GraphMetadata metaData = new GraphMetadata(replaySize, batchSize, decayRate, targetRotation);
 
             File pretrained = new File(server.getModelName(metaData));
 
@@ -107,14 +106,14 @@ public class LocalTrainingServer implements ITrainingServer{
                 System.out.println(model.summary());
             }
             else{
-                MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, 0, commDepth);
+                MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, 0);
                 server.addGraph(metaData, agent.getMetaGraph());
                 dependencyGraph.resetNodes();
                 System.out.println(agent.getMetaGraph().summary());
             }
         }
 
-        MetaDecisionAgent outputsAgent = new MetaDecisionAgent(dependencyGraph, 0, 3);
+        MetaDecisionAgent outputsAgent = new MetaDecisionAgent(dependencyGraph, 0);
         server.outputs = outputsAgent.getOutputNames();
 
         Thread t = new Thread(server);
@@ -384,6 +383,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
                     if (iterations % 100 == 0) {
                         Nd4j.getMemoryManager().invokeGc();
+                        System.out.println(Arrays.toString(errors) + " " + Arrays.toString(wArray));
                         System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / 100));
                         System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / 100));
                         System.out.println("Total build time: " + buildTime + " average was " + (buildTime / 100));

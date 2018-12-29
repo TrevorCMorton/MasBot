@@ -6,14 +6,12 @@ public class GraphMetadata {
     int replaySize;
     int batchSize;
     float decayRate;
-    int commDepth;
     int targetRotation;
 
-    public GraphMetadata(int replaySize, int batchSize, float decayRate, int commDepth, int targetRotation){
+    public GraphMetadata(int replaySize, int batchSize, float decayRate, int targetRotation){
         this.replaySize = replaySize;
         this.batchSize = batchSize;
         this.decayRate = decayRate;
-        this.commDepth = commDepth;
         this.targetRotation = targetRotation;
     }
 
@@ -26,8 +24,6 @@ public class GraphMetadata {
         sb.append(this.decayRate);
         sb.append("-");
         sb.append(this.targetRotation);
-        sb.append("-");
-        sb.append(this.commDepth);
         return sb.toString();
     }
 }

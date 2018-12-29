@@ -28,7 +28,9 @@ public class DataPoint {
             absMax = (absMax.add(abs(this.labels[i])).add(abs(absMax.sub(abs(this.labels[i]))))).mul(.5);
         }
 
-        INDArray terminal = not(greaterThanOrEqual(absMax, Nd4j.ones(absMax.shape())));
+        //INDArray terminal = not(greaterThanOrEqual(absMax, Nd4j.ones(absMax.shape())));
+        //INDArray terminal = not(absMax.eq(Nd4j.ones(absMax.shape())));
+        INDArray terminal = Nd4j.ones(absMax.shape());
 
         for(int i = 0; i < this.labels.length; i++){
             INDArray propReward = targetMaxs[i].mul(decayRate).mul(terminal);

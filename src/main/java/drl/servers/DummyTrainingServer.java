@@ -24,7 +24,7 @@ public class DummyTrainingServer implements ITrainingServer {
             System.out.println(model.summary());
         }
         else{
-            MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, this.getProb(), 3);
+            MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, this.getProb());
             this.graph = agent.getMetaGraph();
             dependencyGraph.resetNodes();
             System.out.println(agent.getMetaGraph().summary());

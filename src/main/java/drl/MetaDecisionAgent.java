@@ -31,7 +31,6 @@ public class MetaDecisionAgent {
     private ArrayList<InputType> types;
     private long iters;
     private double prob;
-    private int commDepth;
     private ArrayList<ArrayList<Integer>> agentInds;
 
     private long evals;
@@ -41,10 +40,9 @@ public class MetaDecisionAgent {
     private long layerDecisionTime;
     private long layerCleanupTime;
 
-    public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, double prob, int commDepth){
+    public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, double prob){
         this.dependencyGraph = dependencyGraph;
         this.prob = prob;
-        this.commDepth = commDepth;
 
         iters = 0;
 
@@ -151,12 +149,6 @@ public class MetaDecisionAgent {
             long layerOutputTime = System.currentTimeMillis();
             this.outputTime += layerOutputTime - layerStart;
 
-            // Get output names for all nodes in layer
-            List<String> layerOutputs = new ArrayList<>();
-            for (AgentDependencyGraph.Node node : nodeLayer) {
-                 layerOutputs.addAll(node.agent.getOutputNames());
-            }
-
             // Populate map of output names to value
             for(int i = 0; i < this.outputs.length; i++){
                 outputValues.put(this.outputs[i], results[i].getFloat(0));
@@ -165,41 +157,37 @@ public class MetaDecisionAgent {
             long layerSetup = System.currentTimeMillis();
             this.layerSetupTime += layerSetup - layerOutputTime;
 
-            // Choose action from layer, either random or the highest value
-            String chosenAction;
-            if(Math.random() > prob){
-                chosenAction = layerOutputs.get((int)(Math.random() * layerOutputs.size()));
-            }
-            else {
-                float best = outputValues.get(layerOutputs.get(0));
-                String bestAction = "";
-                for (String action : layerOutputs) {
-                    System.out.print(action + ": " + outputValues.get(action) + " ");
-                    if (bestAction.equals("") || outputValues.get(action) > best) {
-                        bestAction = action;
-                        best = outputValues.get(action);
+            // Choose action from each node, either random or the highest value
+            for(AgentDependencyGraph.Node node : nodeLayer) {
+                List<String> nodeOutputs = node.agent.getOutputNames();
+                String chosenAction;
+                if (Math.random() > prob) {
+                    chosenAction = nodeOutputs.get((int) (Math.random() * nodeOutputs.size()));
+                } else {
+                    float best = outputValues.get(nodeOutputs.get(0));
+                    String bestAction = nodeOutputs.get(0);
+                    for (String action : nodeOutputs) {
+                        System.out.print(action + ": " + outputValues.get(action) + " ");
+                        if (outputValues.get(action) > best) {
+                            bestAction = action;
+                            best = outputValues.get(action);
+                        }
                     }
+                    System.out.println("Best: " + bestAction);
+                    chosenAction = bestAction;
                 }
-                System.out.println("Best: " + bestAction);
-                chosenAction = bestAction;
+
+                actions.add(chosenAction);
             }
+
 
             long layerDecision = System.currentTimeMillis();
             this.layerDecisionTime += layerDecision - layerSetup;
 
-            // Choose action from last step
-            actions.add(chosenAction);
-
-            // For each node add dependents to a new list and choose neutral actions for agents whose actions weren't chosen
+            // For each node add dependents to a new list
             List<AgentDependencyGraph.Node> nextLayer = new ArrayList<>();
             for (AgentDependencyGraph.Node node : nodeLayer) {
-                List<String> agentOutputs = node.agent.getOutputNames();
-                if(!agentOutputs.contains(chosenAction)){
-                    actions.add(node.agent.getNeutralAction());
-                }
-                else {
-                    nextLayer.addAll(node.dependents);
-                }
+                nextLayer.addAll(node.dependents);
             }
 
             // Setup next layer
