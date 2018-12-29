@@ -51,7 +51,9 @@ public class RankReplayer<T> implements IReplayer<T>{
 
     @Override
     public T get(int i) {
-        this.verify();
+        if(this.verify()){
+            System.out.println("Verification failed");
+        }
 
         if(i > this.size() - 1){
             System.out.println("Attempting access out of bounds, reducing index to " + (i - 1));
@@ -65,7 +67,10 @@ public class RankReplayer<T> implements IReplayer<T>{
     }
 
     private T getHelper(int i, Node n){
-        //System.out.println(i + " " + n.leftCount + " " + n.rightCount);
+        if(n == null){
+            System.out.println(i);
+        }
+        System.out.println(i + " " + n.leftCount + " " + n.rightCount);
         if(n.leftCount > i){
             return getHelper(i, n.left);
         }
