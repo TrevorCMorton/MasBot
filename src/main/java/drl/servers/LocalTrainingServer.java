@@ -349,12 +349,12 @@ public class LocalTrainingServer implements ITrainingServer{
                     INDArray[] dataMasks = cumulativeData.getMasks();
 
                     for(int i = 0; i < error.length; i++){
-                        if(iterations % 100 == 0){
-                            System.out.println(Arrays.toString(error[i].toDoubleVector()) + " " + Arrays.toString(dataMasks[i].toDoubleVector()));
-                        }
                         error[i] = qLabels[i].sub(inputLabels[i]);
                         absTotalError.add(abs(error[i]));
                         absTotalMaskedError.add(abs(error[i].mul(dataMasks[i])));
+                        if(iterations % 100 == 0){
+                            System.out.println(Arrays.toString(error[i].toDoubleVector()) + " " + Arrays.toString(dataMasks[i].toDoubleVector()));
+                        }
                     }
 
                     INDArray[] weightedLabels = new INDArray[dataSet.getLabels().length];
