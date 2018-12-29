@@ -13,10 +13,12 @@ public class RankReplayer<T> implements IReplayer<T>{
 
     @Override
     public void add(double error, T data) {
+        System.out.println("add");
         this.root = addHelper(new Node(error, data), this.root);
         this.verifyHelper(this.root);
 
         if(this.size() > maxSize){
+            System.out.println("remove last");
             this.root = removeLast(this.root);
             this.verifyHelper(this.root);
         }
@@ -58,8 +60,10 @@ public class RankReplayer<T> implements IReplayer<T>{
             return this.get(i - 1);
         }
         else {
+            System.out.println("get");
             T temp = getHelper(i, this.root);
             this.verifyHelper(this.root);
+            System.out.println("remove");
             this.root = remove(i, this.root);
             this.verifyHelper(this.root);
             return temp;
