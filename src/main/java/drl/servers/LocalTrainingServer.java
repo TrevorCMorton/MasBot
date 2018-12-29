@@ -341,20 +341,21 @@ public class LocalTrainingServer implements ITrainingServer{
 
                     MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(targetMaxs, metaData.decayRate);
 
+                    INDArray[] inputLabels = graph.output(dataSet.getFeatures());
                     INDArray[] error = new INDArray[dataSet.getLabels().length];
                     INDArray absTotalError = Nd4j.zeros(w.shape());
                     INDArray[] qLabels = dataSet.getLabels();
-                    INDArray[] qMasks = dataSet.getLabelsMaskArrays();
+                    INDArray[] dataMasks = cumulativeData.getMasks();
 
                     for(int i = 0; i < error.length; i++){
-                        error[i] = qLabels[i].sub(curLabels[i]);
-                        absTotalError.add(abs(error[i].mul(qMasks[i])));
+                        error[i] = qLabels[i].sub(inputLabels[i]);
+                        absTotalError.add(abs(error[i].mul(dataMasks[i])));
                     }
 
                     INDArray[] weightedLabels = new INDArray[dataSet.getLabels().length];
 
                     for(int i = 0; i < weightedLabels.length; i++){
-                        weightedLabels[i] = curLabels[i].add(error[i].mul(w));
+                        weightedLabels[i] = inputLabels[i].add(error[i].mul(w));
                     }
 
                     dataSet.setLabels(weightedLabels);
@@ -382,10 +383,10 @@ public class LocalTrainingServer implements ITrainingServer{
                     if (iterations % 100 == 0) {
                         Nd4j.getMemoryManager().invokeGc();
                         System.out.println(Arrays.toString(wArray) + " " + Arrays.toString(errors));
-                        System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / metaData.targetRotation));
-                        System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / metaData.targetRotation));
-                        System.out.println("Total build time: " + buildTime + " average was " + (buildTime / metaData.targetRotation));
-                        System.out.println("Total fit time: " + fitTime + " average was " + (fitTime / metaData.targetRotation));
+                        System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / 100));
+                        System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / 100));
+                        System.out.println("Total build time: " + buildTime + " average was " + (buildTime / 100));
+                        System.out.println("Total fit time: " + fitTime + " average was " + (fitTime / 100));
                         batchTime = 0;
                         concatTime = 0;
                         buildTime = 0;
