@@ -344,17 +344,12 @@ public class LocalTrainingServer implements ITrainingServer{
                     INDArray[] inputLabels = graph.output(dataSet.getFeatures());
                     INDArray[] error = new INDArray[dataSet.getLabels().length];
                     INDArray absTotalError = Nd4j.zeros(w.shape());
-                    INDArray absTotalMaskedError = Nd4j.zeros(w.shape());
                     INDArray[] qLabels = dataSet.getLabels();
                     INDArray[] dataMasks = cumulativeData.getMasks();
 
                     for(int i = 0; i < error.length; i++){
                         error[i] = qLabels[i].sub(inputLabels[i]);
-                        absTotalError.add(abs(error[i]));
-                        absTotalMaskedError.add(abs(error[i].mul(dataMasks[i])));
-                        if(iterations % 100 == 0){
-                            System.out.println(Arrays.toString(error[i].toDoubleVector()) + " " + Arrays.toString(dataMasks[i].toDoubleVector()));
-                        }
+                        absTotalError = absTotalError.add(abs(error[i].mul(dataMasks[i])));
                     }
 
                     INDArray[] weightedLabels = new INDArray[dataSet.getLabels().length];
@@ -366,7 +361,6 @@ public class LocalTrainingServer implements ITrainingServer{
                     dataSet.setLabels(weightedLabels);
 
                     double[] errors = absTotalError.toDoubleVector();
-                    double[] maskedErrors = absTotalMaskedError.toDoubleVector();
                     for(int k = 0; k < batchPoints.length; k++){
                         this.dataPoints.add(errors[k], batchPoints[k]);
                     }
@@ -388,7 +382,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
                     if (iterations % 100 == 0) {
                         Nd4j.getMemoryManager().invokeGc();
-                        System.out.println(Arrays.toString(wArray) + " " + Arrays.toString(errors) + " " + Arrays.toString(maskedErrors));
+                        System.out.println(Arrays.toString(wArray) + " " + Arrays.toString(errors));
                         System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / 100));
                         System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / 100));
                         System.out.println("Total build time: " + buildTime + " average was " + (buildTime / 100));
