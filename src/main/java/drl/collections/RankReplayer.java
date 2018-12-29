@@ -51,11 +51,17 @@ public class RankReplayer<T> implements IReplayer<T>{
 
     @Override
     public T get(int i) {
-        T temp = getHelper(i, this.root);
+        this.verify();
 
-        this.root = remove(i, this.root);
-
-        return temp;
+        if(i > this.size() - 1){
+            System.out.println("Attempting access out of bounds, reducing index to " + (i - 1));
+            return this.get(i - 1);
+        }
+        else {
+            T temp = getHelper(i, this.root);
+            this.root = remove(i, this.root);
+            return temp;
+        }
     }
 
     private T getHelper(int i, Node n){
