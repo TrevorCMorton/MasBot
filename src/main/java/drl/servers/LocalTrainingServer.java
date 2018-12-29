@@ -361,8 +361,10 @@ public class LocalTrainingServer implements ITrainingServer{
                     dataSet.setLabels(weightedLabels);
 
                     double[] errors = absTotalError.toDoubleVector();
-                    for(int k = 0; k < batchPoints.length; k++){
-                        this.dataPoints.add(errors[k], batchPoints[k]);
+                    synchronized (this.dataPoints) {
+                        for (int k = 0; k < batchPoints.length; k++) {
+                            this.dataPoints.add(errors[k], batchPoints[k]);
+                        }
                     }
 
                     long graphBuild = System.currentTimeMillis();
