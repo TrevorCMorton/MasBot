@@ -3,6 +3,7 @@ package drl.agents;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.LossLayer;
+import org.deeplearning4j.nn.weights.WeightInit;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
@@ -35,7 +36,7 @@ public abstract class AbstractControlAgent implements IAgent{
 
             builder
                     .addLayer(outputName + "Internal",
-                            new DenseLayer.Builder().nOut(1).activation(Activation.IDENTITY).build(),
+                            new DenseLayer.Builder().nOut(1).weightInit(WeightInit.ZERO).activation(Activation.IDENTITY).build(),
                             this.name + this.getControlName() + "1")
                     .addLayer(outputName,
                             new LossLayer.Builder().lossFunction(LossFunctions.LossFunction.L2).build(),
