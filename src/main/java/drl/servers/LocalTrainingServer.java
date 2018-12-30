@@ -130,7 +130,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
         System.out.println("Accepting Clients");
         ServerSocket ss = new ServerSocket(LocalTrainingServer.port);
-        while(true) {
+        while(server.run) {
             synchronized (server.threads) {
                 LinkedList<Long> badThreads = new LinkedList<>();
                 for (long creationTime : server.threads.keySet()) {
@@ -383,7 +383,6 @@ public class LocalTrainingServer implements ITrainingServer{
 
                     if (iterations % 100 == 0) {
                         Nd4j.getMemoryManager().invokeGc();
-                        System.out.println(Arrays.toString(errors) + " " + Arrays.toString(wArray));
                         System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / 100));
                         System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / 100));
                         System.out.println("Total build time: " + buildTime + " average was " + (buildTime / 100));
@@ -409,6 +408,10 @@ public class LocalTrainingServer implements ITrainingServer{
 
             if (this.pointWait != 0) {
                 this.pointWait -= 1;
+            }
+
+            if(this.iterations >= LocalTrainingServer.iterationsToTrain){
+                this.run = false;
             }
         }
     }
