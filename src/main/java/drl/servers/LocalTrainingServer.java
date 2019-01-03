@@ -410,7 +410,9 @@ public class LocalTrainingServer implements ITrainingServer{
                 this.pointWait -= 1;
             }
 
-            if(this.iterations >= LocalTrainingServer.iterationsToTrain){
+            int serverIterations = this.graphs.get(this.graphs.keySet().iterator().next()).getIterationCount();
+
+            if(serverIterations >= LocalTrainingServer.iterationsToTrain){
                 this.run = false;
             }
         }
