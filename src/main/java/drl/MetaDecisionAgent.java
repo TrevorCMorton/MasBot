@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 
 public class MetaDecisionAgent {
-    public static final int size = 84;
+    public static final int size = 120;
 
     private ComputationGraph metaGraph;
     private AgentDependencyGraph dependencyGraph;
@@ -61,7 +61,7 @@ public class MetaDecisionAgent {
         ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
             .seed(123)
             .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-            .updater(new Adam(.0001))
+            .updater(new RmsProp(.00025))
             .graphBuilder();
 
         Collection<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getNodes();
