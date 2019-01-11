@@ -278,7 +278,7 @@ public class LocalTrainingServer implements ITrainingServer{
                 synchronized (this.dataPoints) {
                     int lastLabel = 0;
                     for (int i = 0; i < probabilityIndexes.size(); i++) {
-                        int index = this.random.nextInt(probabilityIndexes.get(i) - lastLabel) + lastLabel;
+                        int index = probabilityIndexes.get(i) == 0 ? 0 : this.random.nextInt(probabilityIndexes.get(i) - lastLabel) + lastLabel + 1;
                         DataPoint data = this.dataPoints.get(index - i);
                         batchPoints[i] = data;
 
@@ -560,7 +560,7 @@ public class LocalTrainingServer implements ITrainingServer{
             tierSum += Math.pow(1.0 / ((double)(i + 1)), alpha) / probSum;
             if(tierSum >= equivalenceSize){
                 intervals.add(i);
-                tierSum = 0;
+                tierSum = tierSum - equivalenceSize;
             }
         }
 
