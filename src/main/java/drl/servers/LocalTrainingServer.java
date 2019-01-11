@@ -255,11 +255,12 @@ public class LocalTrainingServer implements ITrainingServer{
         for(int i = 0; i < blankLabels.length; i++){
             blankLabels[i] = Nd4j.ones(1);
         }
+        this.dataPoints.prepopulate(new DataPoint(blankInput, blankInput, blankLabels, blankLabels));
 
         while(this.run){
             System.out.print("");
 
-            boolean sufficientDataGathered = this.pointsGathered > this.dataPoints.getMaxSize();
+            boolean sufficientDataGathered = true;//this.pointsGathered > this.dataPoints.getMaxSize();
 
             if (!paused && sufficientDataGathered && iterations <= pointsGathered) {
                 long startTime = System.currentTimeMillis();
@@ -564,7 +565,9 @@ public class LocalTrainingServer implements ITrainingServer{
             }
         }
 
-        intervals.add(totalSize);
+        if(intervals.size() != batchSize) {
+            intervals.add(totalSize - 1);
+        }
 
         return intervals;
     }
