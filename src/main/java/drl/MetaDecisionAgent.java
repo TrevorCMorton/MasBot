@@ -23,6 +23,7 @@ import java.util.List;
 
 public class MetaDecisionAgent {
     public static final int size = 84;
+    public static final int depth = 4;
 
     private ComputationGraph metaGraph;
     private AgentDependencyGraph dependencyGraph;
