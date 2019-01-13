@@ -250,17 +250,17 @@ public class LocalTrainingServer implements ITrainingServer{
         double alpha = .6;
         double probabilitySum = this.getProbabilitySum(alpha, this.dataPoints.getMaxSize());
         ArrayList<Integer> probabilityIndexes = this.getProbabilityIntervals(this.batchSize, alpha, this.dataPoints.getMaxSize());
-        INDArray[] blankInput = new INDArray[]{Nd4j.ones(1, 4, 84, 84)};
+        INDArray[] randInput = new INDArray[]{Nd4j.rand(new int[]{1, 4, 84, 84})};
         INDArray[] blankLabels = new INDArray[this.outputs.length];
         for(int i = 0; i < blankLabels.length; i++){
             blankLabels[i] = Nd4j.ones(1);
         }
-        //this.dataPoints.prepopulate(new DataPoint(blankInput, blankInput, blankLabels, blankLabels));
+        this.dataPoints.prepopulate(new DataPoint(randInput, randInput, blankLabels, blankLabels));
 
         while(this.run){
             System.out.print("");
 
-            boolean sufficientDataGathered = this.pointsGathered > this.dataPoints.getMaxSize();
+            boolean sufficientDataGathered = true;//this.pointsGathered > this.dataPoints.getMaxSize();
 
             if (!paused && sufficientDataGathered && iterations <= pointsGathered) {
                 long startTime = System.currentTimeMillis();
@@ -316,6 +316,18 @@ public class LocalTrainingServer implements ITrainingServer{
 
                     for (ArrayList<Integer> inds : this.dependencyGraph.getAgentInds(this.outputs)) {
                         int concatInd = 0;
+                        INDArray[] indLabels = new INDArray[inds.size()];
+                        for (int i : inds) {
+                            indLabels[concatInd] = targetLabels[i];
+                            concatInd++;
+                        }
+                        INDArray max = Nd4j.concat(1, indLabels);
+                        max = Nd4j.max(max, 1);
+                        for (int i : inds) {
+                            targetMaxs[i] = max;
+                        }
+                        /*
+                        int concatInd = 0;
                         INDArray[] curIndLabels = new INDArray[inds.size()];
                         for (int i : inds) {
                             curIndLabels[concatInd] = curLabels[i];
@@ -337,6 +349,7 @@ public class LocalTrainingServer implements ITrainingServer{
                         for (int i : inds) {
                             targetMaxs[i] = targetMax;
                         }
+                        */
                     }
 
                     MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(targetMaxs, metaData.decayRate);
