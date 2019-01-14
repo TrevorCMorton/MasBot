@@ -181,12 +181,14 @@ public class LocalTrainingServer implements ITrainingServer{
                                             INDArray[] endState = (INDArray[]) input.readObject();
                                             INDArray[] masks = (INDArray[]) input.readObject();
                                             float score = (float) input.readObject();
+                                            INDArray[] startLabels = (INDArray[]) input.readObject();
+                                            INDArray[] endLabels = (INDArray[]) input.readObject();
 
                                             if (server.dataPoints.size() % 10000 == 100) {
                                                 server.writeStateToImage(startState, "start");
                                             }
 
-                                            server.addData(startState, endState, masks, score);
+                                            server.addData(startState, endState, masks, score, startLabels, endLabels);
                                         } catch (Exception e) {
                                             System.out.println("Error while attempting to upload a data point, point destroyed");
                                         }
@@ -433,7 +435,7 @@ public class LocalTrainingServer implements ITrainingServer{
     }
 
     @Override
-    public void addData(INDArray[] startState, INDArray[] endState, INDArray[] masks, float score) {
+    public void addData(INDArray[] startState, INDArray[] endState, INDArray[] masks, float score, INDArray[] startLabels, INDArray[] endLabels) {
         pointWait = 5;
 
         INDArray[] labels = new INDArray[masks.length];
@@ -444,8 +446,17 @@ public class LocalTrainingServer implements ITrainingServer{
 
         DataPoint data = new DataPoint(startState, endState, labels, masks);
 
+        INDArray absTotalError = Nd4j.zeros(startLabels[0].shape());
+
+        for(int i = 0; i < startLabels.length; i++){
+            INDArray error = endLabels[i].sub(startLabels[i]);
+            absTotalError = absTotalError.add(abs(error.mul(masks[i])));
+        }
+
+        double[] errors = absTotalError.toDoubleVector();
+
         synchronized (this.dataPoints){
-            this.dataPoints.add(100, data);
+            this.dataPoints.add(errors[0], data);
         }
 
         pointsGathered++;

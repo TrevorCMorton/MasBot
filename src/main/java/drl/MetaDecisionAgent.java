@@ -32,7 +32,7 @@ public class MetaDecisionAgent {
     private ArrayList<InputType> types;
     private long iters;
     private double prob;
-    private ArrayList<ArrayList<Integer>> agentInds;
+    private INDArray[] cachedLabels;
 
     private long evals;
     private long initSetupTime;
@@ -200,6 +200,8 @@ public class MetaDecisionAgent {
 
             long layerCleanup = System.currentTimeMillis();
             layerCleanupTime += layerCleanup - layerDecision;
+
+            this.cachedLabels = results;
         }
 
         if(iters % 100 == 0) {
@@ -238,7 +240,9 @@ public class MetaDecisionAgent {
         return this.outputs;
     }
 
-    public ArrayList<ArrayList<Integer>> getAgentInds() { return this.agentInds; }
+    public INDArray[] getCachedLabels() {
+        return cachedLabels;
+    }
 
     public void printEvalSummary(){
         System.out.println("Average time for eval initialization: " + (initSetupTime / evals) + "ms");
