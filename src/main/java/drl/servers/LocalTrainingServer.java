@@ -609,7 +609,7 @@ public class LocalTrainingServer implements ITrainingServer{
             File f = new File(fileName + ".jpg");
             BufferedImage img = new BufferedImage(this.inputSize, this.inputSize, BufferedImage.TYPE_3BYTE_BGR);
 
-            INDArray stateImage = state[0].getColumn(3).mul(255);
+            INDArray stateImage = state[0].getColumn(3);//.mul(255);
             int[] pixelValues = Nd4j.toFlattened(stateImage).toIntVector();
 
             int index = 0;
