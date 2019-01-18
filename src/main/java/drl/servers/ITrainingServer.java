@@ -9,6 +9,7 @@ import java.rmi.RemoteException;
 
 public interface ITrainingServer extends Runnable {
     void addData(INDArray[] startState, INDArray[] endState, INDArray[] masks, float score, INDArray[] startLabels, INDArray[] endLabels);
+    void addScore(double score);
     ComputationGraph getUpdatedNetwork();
     AgentDependencyGraph getDependencyGraph();
     void pause();

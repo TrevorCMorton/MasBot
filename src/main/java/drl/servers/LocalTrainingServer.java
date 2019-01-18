@@ -31,6 +31,9 @@ public class LocalTrainingServer implements ITrainingServer{
     public static final int port = 1612;
     public static final long iterationsToTrain = 10000000;
 
+    private int statsCounter;
+    private HashMap<Long, Double> statsStorage;
+
     private HashMap<GraphMetadata, ComputationGraph> graphs;
     private HashMap<GraphMetadata, ComputationGraph>  targetGraphs;
     private AgentDependencyGraph dependencyGraph;
@@ -56,6 +59,9 @@ public class LocalTrainingServer implements ITrainingServer{
 
         this.pointWait = 5;
 
+        this.statsCounter = 0;
+        this.statsStorage = new HashMap<>();
+
         this.dataPoints = new RankReplayer<>(maxReplaySize);
         this.random = new Random(324);
 
@@ -73,12 +79,24 @@ public class LocalTrainingServer implements ITrainingServer{
     public static void main(String[] args) throws Exception{
         Nd4j.getMemoryManager().togglePeriodicGc(false);
 
+        /*
+        HashMap<Long, Double> csvTest = new HashMap<>();
+
+        for(int i = 0; i < 100; i++){
+            double rand = (Math.random() * 100);
+            csvTest.put((long)i, rand);
+        }
+
+        writeHashMapToCsv("test.csv", csvTest);
+        */
         AgentDependencyGraph dependencyGraph = new AgentDependencyGraph();
 
         IAgent joystickAgent = new MeleeJoystickAgent("M");
+        IAgent bbuttonAgent = new MeleeButtonAgent("B");
         IAgent cstickAgent = new MeleeJoystickAgent("C");
         IAgent abuttonAgent = new MeleeButtonAgent("A");
         dependencyGraph.addAgent(null, joystickAgent, "M");
+        dependencyGraph.addAgent(new String[]{"M"}, bbuttonAgent, "B");
         //dependencyGraph.addAgent(new String[]{"M"}, cstickAgent, "C");
         //dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
 
@@ -163,7 +181,7 @@ public class LocalTrainingServer implements ITrainingServer{
                 @Override
                 public void run() {
                     try {
-
+                        boolean stats = server.isStatsRunner();
                         socket.setSoTimeout(600000);
                         System.out.println("Client connected on port " + port);
 
@@ -193,6 +211,12 @@ public class LocalTrainingServer implements ITrainingServer{
                                             System.out.println("Error while attempting to upload a data point, point destroyed");
                                         }
                                         break;
+                                    case ("addScore"):
+                                        double score = (double) input.readObject();
+                                        if(stats){
+                                            server.addScore(score);
+                                        }
+                                        break;
                                     case ("getUpdatedNetwork"):
                                         Iterator<GraphMetadata> iterator = server.graphs.keySet().iterator();
                                         GraphMetadata randomData = iterator.next();
@@ -208,7 +232,13 @@ public class LocalTrainingServer implements ITrainingServer{
                                         output.writeObject(server.getDependencyGraph());
                                         break;
                                     case ("getProb"):
-                                        double prob = server.getProb();
+                                        double prob;
+                                        if(stats){
+                                            prob = 1.0;
+                                        }
+                                        else{
+                                            prob = server.getProb();
+                                        }
                                         output.writeObject(prob);
                                         break;
                                     default:
@@ -432,6 +462,13 @@ public class LocalTrainingServer implements ITrainingServer{
                 this.run = false;
             }
         }
+
+        try {
+            writeHashMapToCsv("scores.csv", statsStorage);
+        }
+        catch (Exception e){
+            System.out.println("Failed writing scores to file " + e);
+        }
     }
 
     @Override
@@ -464,6 +501,12 @@ public class LocalTrainingServer implements ITrainingServer{
         if(pointsGathered % 100 == 0){
             System.out.println(pointsGathered + " points gathered");
         }
+    }
+
+    @Override
+    public void addScore(double score) {
+        long iterations = this.targetGraphs.get(this.targetGraphs.keySet().iterator().next()).getIterationCount();
+        this.statsStorage.put(iterations, score);
     }
 
     @Override
@@ -556,6 +599,27 @@ public class LocalTrainingServer implements ITrainingServer{
         boolean reportScore = true;
         boolean reportGC = true;
         this.graphs.get(metaData).setListeners(new PerformanceListener(100, reportScore));
+    }
+
+    private boolean isStatsRunner(){
+        if (this.statsCounter <= 0) {
+            this.statsCounter = 10;
+            return true;
+        }
+        else{
+            this.statsCounter--;
+            return false;
+        }
+    }
+
+    private void writeHashMapToCsv(String fileName, HashMap<Long, Double> dataMap ) throws Exception {
+        File f = new File(fileName);
+        FileOutputStream fout = new FileOutputStream(f);
+        for(Long key : dataMap.keySet()){
+            String csvLine = key + "," + dataMap.get(key) + "\n";
+            fout.write(csvLine.getBytes());
+        }
+        fout.close();
     }
 
     private INDArray[] concatSet(INDArray[][] set){

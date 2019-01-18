@@ -59,6 +59,22 @@ public class NetworkTrainingServer implements ITrainingServer{
     }
 
     @Override
+    public void addScore(double score) {
+        try {
+            sendData = false;
+            while (sendingData) {
+                Thread.sleep(5);
+            }
+
+            this.objectOutput.writeObject("addScore");
+            this.objectOutput.writeObject(score);
+        }
+        catch(Exception e){
+            System.out.println("IT GOOFED" + e);
+        }
+    }
+
+    @Override
     public ComputationGraph getUpdatedNetwork() {
         try {
             sendData = false;

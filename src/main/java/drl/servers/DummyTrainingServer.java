@@ -37,6 +37,11 @@ public class DummyTrainingServer implements ITrainingServer {
     }
 
     @Override
+    public void addScore(double score) {
+
+    }
+
+    @Override
     public ComputationGraph getUpdatedNetwork() {
         return this.graph;
     }
