@@ -113,7 +113,8 @@ public class MetaDecisionAgent {
 
         for(int i = 1; i < this.inputs.size(); i++){
             for(int j = 0; j < results.length; j++){
-                if(this.inputs.get(i).startsWith(results[j])){
+                String input = this.inputs.get(i);
+                if(input.substring(0, input.length() - 2).equals(results[j])){
                     graphInputs[i] = Nd4j.ones(1);
                 }
             }
