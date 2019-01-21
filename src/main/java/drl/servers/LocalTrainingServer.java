@@ -29,7 +29,7 @@ import static org.nd4j.linalg.ops.transforms.Transforms.abs;
 
 public class LocalTrainingServer implements ITrainingServer{
     public static final int port = 1612;
-    public static final long iterationsToTrain = 10000000;
+    public static final long iterationsToTrain = 1000000;
 
     private int statsCounter;
     private HashMap<Long, Double> statsStorage;
@@ -90,13 +90,12 @@ public class LocalTrainingServer implements ITrainingServer{
         writeHashMapToCsv("test.csv", csvTest);
         */
         AgentDependencyGraph dependencyGraph = new AgentDependencyGraph();
-
         IAgent joystickAgent = new MeleeJoystickAgent("M");
         IAgent bbuttonAgent = new MeleeButtonAgent("B");
         IAgent cstickAgent = new MeleeJoystickAgent("C");
         IAgent abuttonAgent = new MeleeButtonAgent("A");
-        dependencyGraph.addAgent(null, joystickAgent, "M");
-        dependencyGraph.addAgent(new String[]{"M"}, bbuttonAgent, "B");
+        dependencyGraph.addAgent(null, bbuttonAgent, "B");
+        dependencyGraph.addAgent(new String[]{"B"}, joystickAgent, "M");
         //dependencyGraph.addAgent(new String[]{"M"}, cstickAgent, "C");
         //dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
 
