@@ -207,6 +207,8 @@ public class MetaDecisionAgent {
                     }
                 }
             }
+
+            this.cachedLabels = outputs;
         }
 
         return state;
