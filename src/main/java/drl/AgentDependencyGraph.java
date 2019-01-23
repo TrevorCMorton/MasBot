@@ -3,10 +3,7 @@ package drl;
 import drl.agents.IAgent;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 public class AgentDependencyGraph implements Serializable {
     private HashMap<String, Node> agentNodes;
@@ -50,7 +47,16 @@ public class AgentDependencyGraph implements Serializable {
 
     public ArrayList<ArrayList<Integer>> getAgentInds(String[] outputs){
         ArrayList<ArrayList<Integer>> agentInds = new ArrayList<>();
-        for(AgentDependencyGraph.Node node : this.getNodes()){
+        Queue<Node> nodeList = new LinkedList<>();
+        HashSet<Node> visited = new HashSet<>();
+
+        for(Node node : this.getRoots()){
+            nodeList.add(node);
+        }
+
+        while(!nodeList.isEmpty()){
+            Node node = nodeList.poll();
+
             ArrayList<Integer> inds = new ArrayList<>();
             for(int i = 0; i < outputs.length; i++){
                 for(String name : node.agent.getOutputNames()){
@@ -61,6 +67,18 @@ public class AgentDependencyGraph implements Serializable {
             }
 
             agentInds.add(inds);
+            visited.add(node);
+            for(Node dependent : node.dependents){
+                boolean shouldAdd = true;
+                for(Node dependency : dependent.dependencies){
+                    if(!visited.contains(dependency)){
+                        shouldAdd = false;
+                    }
+                }
+                if(shouldAdd){
+                    nodeList.add(dependent);
+                }
+            }
         }
 
         return agentInds;

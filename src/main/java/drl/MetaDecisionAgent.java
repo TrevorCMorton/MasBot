@@ -16,10 +16,7 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.*;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 public class MetaDecisionAgent {
     public static final int size = 120;
@@ -29,6 +26,7 @@ public class MetaDecisionAgent {
     private AgentDependencyGraph dependencyGraph;
     private String[] outputs;
     private ArrayList<String> inputs;
+    private HashMap<Integer, String> orphanInputs;
     private ArrayList<InputType> types;
     private long iters;
     private double prob;
@@ -48,6 +46,7 @@ public class MetaDecisionAgent {
         iters = 0;
 
         this.inputs = new ArrayList<>();
+        this.orphanInputs = new HashMap<>();
         this.types = new ArrayList<>();
 
         this.dependencyGraph.resetNodes();
@@ -95,6 +94,20 @@ public class MetaDecisionAgent {
             this.outputs[i] = outputNames.get(i);
         }
 
+        for(int i = 0; i < this.outputs.length; i++){
+            boolean contains = false;
+            for(int j = 0; j < this.inputs.size(); j++){
+                if(this.outputs[i].equals(this.inputs.get(j).substring(0, this.inputs.get(j).length() - 2))){
+                    contains = true;
+                    break;
+                }
+            }
+
+            if(!contains){
+                this.orphanInputs.put(i, this.outputs[i]);
+            }
+        }
+
         builder.setOutputs(this.outputs);
 
         InputType[] inputTypes = new InputType[this.types.size()];
@@ -106,113 +119,97 @@ public class MetaDecisionAgent {
         metaGraph.init();
     }
 
-    public INDArray[] getState(INDArray frame, String[] results){
-        INDArray[] graphInputs = new INDArray[this.inputs.size()];
-
-        graphInputs[0] = frame;
-
-        for(int i = 1; i < this.inputs.size(); i++){
-            for(int j = 0; j < results.length; j++){
-                String input = this.inputs.get(i);
-                if(input.substring(0, input.length() - 2).equals(results[j])){
-                    graphInputs[i] = Nd4j.ones(1);
-                }
-            }
-
-            if(graphInputs[i] == null){
-                graphInputs[i] = Nd4j.zeros(1);
-            }
-        }
-
-        return graphInputs;
-    }
-
-    public String[] eval(INDArray input){
-        this.evals++;
-
-        long start = System.currentTimeMillis();
+    public String[] evalState(INDArray[] state){
+        INDArray[] outputs = this.getMetaGraph().output(state);
 
         ArrayList<String> actions = new ArrayList<>();
-        INDArray[] features = this.getState(input, new String[] {} );
-        INDArray[] results;
 
-        HashMap<String, Float> outputValues = new HashMap<>();
-        List<AgentDependencyGraph.Node> nodeLayer = this.dependencyGraph.getRoots();
-
-        long setup = System.currentTimeMillis();
-        this.initSetupTime += setup - start;
-
-        while(!nodeLayer.isEmpty()) {
-            long layerStart = System.currentTimeMillis();
-
-            results = metaGraph.output(features);
-
-            long layerOutputTime = System.currentTimeMillis();
-            this.outputTime += layerOutputTime - layerStart;
-
-            // Populate map of output names to value
-            for(int i = 0; i < this.outputs.length; i++){
-                outputValues.put(this.outputs[i], results[i].getFloat(0));
+        for(int j = 1; j < this.inputs.size(); j++){
+            String inputName = this.inputs.get(j);
+            if(state[j].getFloat(0) == 1){
+                actions.add(inputName.substring(0, inputName.length() - 2));
             }
+        }
 
-            long layerSetup = System.currentTimeMillis();
-            this.layerSetupTime += layerSetup - layerOutputTime;
+        ArrayList<ArrayList<Integer>> agentInds = this.dependencyGraph.getAgentInds(this.outputs);
 
-            // Choose action from each node, either random or the highest value
-            for(AgentDependencyGraph.Node node : nodeLayer) {
-                List<String> nodeOutputs = node.agent.getOutputNames();
-                String chosenAction;
-                if (Math.random() > prob) {
-                    chosenAction = nodeOutputs.get((int) (Math.random() * nodeOutputs.size()));
-                } else {
-                    float best = outputValues.get(nodeOutputs.get(0));
-                    String bestAction = nodeOutputs.get(0);
-                    for (String action : nodeOutputs) {
-                        System.out.print(action + ": " + outputValues.get(action) + " ");
-                        if (outputValues.get(action) > best) {
-                            bestAction = action;
-                            best = outputValues.get(action);
-                        }
+        for(ArrayList<Integer> agentInd : agentInds){
+            if(this.orphanInputs.containsKey(agentInd.get(0))){
+                float max = outputs[agentInd.get(0)].getFloat(0);
+                int best = agentInd.get(0);
+                for(int index : agentInd){
+                    float val = outputs[index].getFloat(0);
+                    System.out.print(this.outputs[index] + ": " + val + " ");
+                    if(val > max){
+                        max = val;
+                        best = index;
                     }
-                    System.out.println("Best: " + bestAction);
-                    chosenAction = bestAction;
                 }
 
-                actions.add(chosenAction);
+                if(Math.random() > prob){
+                    best = agentInd.get((int)(Math.random() * agentInd.size()));
+                }
+
+                actions.add(this.outputs[best]);
+                System.out.println();
             }
-
-
-            long layerDecision = System.currentTimeMillis();
-            this.layerDecisionTime += layerDecision - layerSetup;
-
-            // For each node add dependents to a new list
-            List<AgentDependencyGraph.Node> nextLayer = new ArrayList<>();
-            for (AgentDependencyGraph.Node node : nodeLayer) {
-                nextLayer.addAll(node.dependents);
-            }
-
-            // Setup next layer
-            nodeLayer = nextLayer;
-
-            // Convert chosen actions to array, get state based on chosen actions and reevaluate network
-            String[] actionArray = new String[actions.size()];
-            actions.toArray(actionArray);
-            features = this.getState(input, actionArray);
-
-            long layerCleanup = System.currentTimeMillis();
-            layerCleanupTime += layerCleanup - layerDecision;
-
-            this.cachedLabels = results;
         }
-
-        if(iters % 100 == 0) {
-            System.out.println(iters);
-        }
-        iters++;
 
         String[] actionArray = new String[actions.size()];
         actions.toArray(actionArray);
+
         return actionArray;
+    }
+
+    public INDArray[] getState(INDArray input){
+        // dependency graph guarantees this will be in safe order
+        ArrayList<ArrayList<Integer>> agentInds = this.dependencyGraph.getAgentInds(this.outputs);
+
+        INDArray[] state = new INDArray[this.inputs.size()];
+        state[0] = input;
+
+        for(int i = 1; i < state.length; i++){
+            state[i] = Nd4j.zeros(input.shape()[0], 1);
+        }
+
+        for(int i = 0; i < agentInds.size(); i++){
+            INDArray[] outputs = this.getMetaGraph().output(state);
+
+            ArrayList<Integer> agentInd = agentInds.get(i);
+            INDArray[] agentOutputs = new INDArray[agentInd.size()];
+
+            for(int j = 0; j < agentInd.size(); j++){
+                agentOutputs[j] = outputs[agentInd.get(j)];
+            }
+
+            INDArray concatArray = Nd4j.concat(1, agentOutputs);
+            INDArray max = concatArray.max(1);
+
+
+            if(Math.random() > this.prob){
+                max = concatArray.getRow((int)(Math.random() * agentInd.size()));
+            }
+
+            INDArray[] masksConcat = new INDArray[agentOutputs.length];
+            for(int j = 0; j < masksConcat.length; j++){
+                masksConcat[j] = agentOutputs[j].eq(max);
+                max = max.add(masksConcat[j]);
+            }
+
+            INDArray masks = Nd4j.concat(1, masksConcat);
+
+            for(int j = 0; j < this.inputs.size(); j++){
+                String inputName = this.inputs.get(j);
+                for(int k = 0; k < agentInd.size(); k++){
+                    if(inputName.substring(0, inputName.length() - 2).equals(this.outputs[agentInd.get(k)])){
+                        state[j] = masks.getColumn(k).reshape(input.shape()[0], 1);
+                        break;
+                    }
+                }
+            }
+        }
+
+        return state;
     }
 
     public INDArray[] getOutputMask(String[] actions){

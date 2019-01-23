@@ -9,11 +9,11 @@ import static org.nd4j.linalg.ops.transforms.Transforms.*;
 
 public class DataPoint {
     INDArray[] startState;
-    INDArray[] endState;
+    INDArray endState;
     INDArray[] labels;
     INDArray[] masks;
 
-    public DataPoint(INDArray[] startState, INDArray[] endState, INDArray[] labels, INDArray[] masks){
+    public DataPoint(INDArray[] startState, INDArray endState, INDArray[] labels, INDArray[] masks){
         this.startState = startState;
         this.endState = endState;
         this.labels = labels;
@@ -42,11 +42,11 @@ public class DataPoint {
     }
 
     public INDArray[] getStartState() {
-        return this.endState;
+        return this.startState;
     }
 
-    public INDArray[] getEndState() {
-        return endState;
+    public INDArray getEndState() {
+        return this.endState;
     }
 
     public INDArray[] getLabels() {

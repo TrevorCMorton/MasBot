@@ -32,7 +32,7 @@ public class DummyTrainingServer implements ITrainingServer {
     }
 
     @Override
-    public void addData(INDArray[] startState, INDArray[] endState, INDArray[] masks, float score, INDArray[] startLabels, INDArray[] endLabels) {
+    public void addData(INDArray[] startState, INDArray endState, INDArray[] masks, float score, INDArray[] startLabels, INDArray[] endLabels) {
 
     }
 

@@ -48,7 +48,7 @@ public class NetworkTrainingServer implements ITrainingServer{
     }
 
     @Override
-    public void addData(INDArray[] startState, INDArray[] endState, INDArray[] masks, float score, INDArray[] startLabels, INDArray[] endLabels) {
+    public void addData(INDArray[] startState, INDArray endState, INDArray[] masks, float score, INDArray[] startLabels, INDArray[] endLabels) {
         dataMessages.add("addData");
         dataMessages.add(startState);
         dataMessages.add(endState);

@@ -35,6 +35,7 @@ public class LocalTrainingServer implements ITrainingServer{
     private HashMap<Long, Double> statsStorage;
 
     private HashMap<GraphMetadata, ComputationGraph> graphs;
+    private MetaDecisionAgent decisionAgent;
     private HashMap<GraphMetadata, ComputationGraph>  targetGraphs;
     private AgentDependencyGraph dependencyGraph;
     private String[] outputs;
@@ -130,8 +131,8 @@ public class LocalTrainingServer implements ITrainingServer{
             }
         }
 
-        MetaDecisionAgent outputsAgent = new MetaDecisionAgent(dependencyGraph, 0);
-        server.outputs = outputsAgent.getOutputNames();
+        server.decisionAgent = new MetaDecisionAgent(dependencyGraph, 1);
+        server.outputs = server.decisionAgent.getOutputNames();
 
         Thread t = new Thread(server);
         t.setPriority(Thread.MAX_PRIORITY);
@@ -195,7 +196,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                     case ("addData"):
                                         try {
                                             INDArray[] startState = (INDArray[]) input.readObject();
-                                            INDArray[] endState = (INDArray[]) input.readObject();
+                                            INDArray endState = (INDArray) input.readObject();
                                             INDArray[] masks = (INDArray[]) input.readObject();
                                             float score = (float) input.readObject();
                                             INDArray[] startLabels = (INDArray[]) input.readObject();
@@ -281,13 +282,15 @@ public class LocalTrainingServer implements ITrainingServer{
         double alpha = .6;
         double probabilitySum = this.getProbabilitySum(alpha, this.dataPoints.getMaxSize());
         ArrayList<Integer> probabilityIndexes = this.getProbabilityIntervals(this.batchSize, alpha, this.dataPoints.getMaxSize());
-        INDArray[] randInput = new INDArray[]{Nd4j.rand(new int[]{1, 4, 84, 84})};
+        /*
+        this.decisionAgent.setMetaGraph(this.graphs.get(this.graphs.keySet().iterator().next()));
+        INDArray[] randInput = this.decisionAgent.getState(Nd4j.rand(new int[]{1, MetaDecisionAgent.depth, MetaDecisionAgent.size, MetaDecisionAgent.size}));
         INDArray[] blankLabels = new INDArray[this.outputs.length];
         for(int i = 0; i < blankLabels.length; i++){
             blankLabels[i] = Nd4j.ones(1);
         }
-        //this.dataPoints.prepopulate(new DataPoint(randInput, randInput, blankLabels, blankLabels));
-
+        this.dataPoints.prepopulate(new DataPoint(randInput, Nd4j.rand(new int[]{1, MetaDecisionAgent.depth, MetaDecisionAgent.size, MetaDecisionAgent.size}), blankLabels, blankLabels));
+        */
         while(this.run){
             System.out.print("");
 
@@ -298,7 +301,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
                 DataPoint[] batchPoints = new DataPoint[this.batchSize];
                 INDArray[][] startStates = new INDArray[this.batchSize][];
-                INDArray[][] endStates = new INDArray[this.batchSize][];
+                INDArray[] endStates = new INDArray[this.batchSize];
                 INDArray[][] labels = new INDArray[this.batchSize][];
                 INDArray[][] masks = new INDArray[this.batchSize][];
 
@@ -330,7 +333,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
                 long batch = System.currentTimeMillis();
 
-                DataPoint cumulativeData = new DataPoint(this.concatSet(startStates), this.concatSet(endStates), this.concatSet(labels), this.concatSet(masks));
+                DataPoint cumulativeData = new DataPoint(this.concatSet(startStates), Nd4j.concat(0, endStates), this.concatSet(labels), this.concatSet(masks));
 
                 long concat = System.currentTimeMillis();
 
@@ -340,10 +343,15 @@ public class LocalTrainingServer implements ITrainingServer{
                     ComputationGraph graph = this.graphs.get(metaData);
                     ComputationGraph targetGraph = this.targetGraphs.get(metaData);
 
-                    INDArray[] curLabels = graph.output(cumulativeData.getEndState());
-                    INDArray[] targetLabels = targetGraph.output(cumulativeData.getEndState());
+                    this.decisionAgent.setMetaGraph(graph);
+                    INDArray[] endState = this.decisionAgent.getState(cumulativeData.endState);
+
+                    INDArray[] curLabels = graph.output(endState);
+                    INDArray[] targetLabels = targetGraph.output(endState);
 
                     INDArray[] targetMaxs = new INDArray[curLabels.length];
+
+                    ArrayList<INDArray> maxs = new ArrayList<>();
 
                     for (ArrayList<Integer> inds : this.dependencyGraph.getAgentInds(this.outputs)) {
                         int concatInd = 0;
@@ -354,9 +362,7 @@ public class LocalTrainingServer implements ITrainingServer{
                         }
                         INDArray max = Nd4j.concat(1, indLabels);
                         max = Nd4j.max(max, 1);
-                        for (int i : inds) {
-                            targetMaxs[i] = max;
-                        }
+                        maxs.add(max);
                         /*
                         int concatInd = 0;
                         INDArray[] curIndLabels = new INDArray[inds.size()];
@@ -381,6 +387,16 @@ public class LocalTrainingServer implements ITrainingServer{
                             targetMaxs[i] = targetMax;
                         }
                         */
+                    }
+
+                    INDArray maxSum = Nd4j.zeros(maxs.get(0).shape());
+                    for(int i = 0; i < maxs.size(); i++){
+                        maxSum.add(maxs.get(i));
+                    }
+                    maxSum.div(maxs.size());
+
+                    for(int i = 0; i < targetMaxs.length; i++){
+                        targetMaxs[i] = maxSum;
                     }
 
                     MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(targetMaxs, metaData.decayRate);
@@ -471,7 +487,7 @@ public class LocalTrainingServer implements ITrainingServer{
     }
 
     @Override
-    public void addData(INDArray[] startState, INDArray[] endState, INDArray[] masks, float score, INDArray[] startLabels, INDArray[] endLabels) {
+    public void addData(INDArray[] startState, INDArray endState, INDArray[] masks, float score, INDArray[] startLabels, INDArray[] endLabels) {
         pointWait = 5;
 
         INDArray[] labels = new INDArray[masks.length];
