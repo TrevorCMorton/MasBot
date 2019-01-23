@@ -187,7 +187,7 @@ public class MetaDecisionAgent {
 
 
             if(Math.random() > this.prob){
-                max = concatArray.getRow((int)(Math.random() * agentInd.size()));
+                max = concatArray.getColumn((int)(Math.random() * agentInd.size()));
             }
 
             INDArray[] masksConcat = new INDArray[agentOutputs.length];
