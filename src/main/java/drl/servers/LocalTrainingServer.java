@@ -333,7 +333,12 @@ public class LocalTrainingServer implements ITrainingServer{
 
                 long batch = System.currentTimeMillis();
 
-                DataPoint cumulativeData = new DataPoint(this.concatSet(startStates), Nd4j.concat(0, endStates), this.concatSet(labels), this.concatSet(masks));
+                INDArray[] cumStart = this.concatSet(startStates);
+                INDArray cumEnd = Nd4j.concat(0, endStates);
+                INDArray[] cumLabels = this.concatSet(labels);
+                INDArray[] cumMasks = this.concatSet(masks);
+
+                DataPoint cumulativeData = new DataPoint(cumStart, cumEnd, cumLabels, cumMasks);
 
                 long concat = System.currentTimeMillis();
 
