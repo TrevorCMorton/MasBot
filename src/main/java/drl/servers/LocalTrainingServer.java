@@ -282,7 +282,7 @@ public class LocalTrainingServer implements ITrainingServer{
         double alpha = .6;
         double probabilitySum = this.getProbabilitySum(alpha, this.dataPoints.getMaxSize());
         ArrayList<Integer> probabilityIndexes = this.getProbabilityIntervals(this.batchSize, alpha, this.dataPoints.getMaxSize());
-
+        /*
         this.decisionAgent.setMetaGraph(this.graphs.get(this.graphs.keySet().iterator().next()));
         INDArray[] randInput = this.decisionAgent.getState(Nd4j.rand(new int[]{1, MetaDecisionAgent.depth, MetaDecisionAgent.size, MetaDecisionAgent.size}));
         INDArray[] blankLabels = new INDArray[this.outputs.length];
@@ -290,13 +290,13 @@ public class LocalTrainingServer implements ITrainingServer{
             blankLabels[i] = Nd4j.ones(1);
         }
         this.dataPoints.prepopulate(new DataPoint(randInput, Nd4j.rand(new int[]{1, MetaDecisionAgent.depth, MetaDecisionAgent.size, MetaDecisionAgent.size}), blankLabels, blankLabels));
-
+        */
         while(this.run){
             System.out.print("");
 
-            boolean sufficientDataGathered = true;//this.pointsGathered > this.dataPoints.getMaxSize();
+            boolean sufficientDataGathered = this.pointsGathered > this.dataPoints.getMaxSize();
 
-            if (!paused && sufficientDataGathered /*&& iterations <= pointsGathered*/) {
+            if (!paused && sufficientDataGathered && iterations <= pointsGathered) {
                 long startTime = System.currentTimeMillis();
 
                 DataPoint[] batchPoints = new DataPoint[this.batchSize];
