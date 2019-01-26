@@ -33,6 +33,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
     private int statsCounter;
     private HashMap<Long, Double> statsStorage;
+    private HashMap<Long, Double> timeStorage;
 
     private HashMap<GraphMetadata, ComputationGraph> graphs;
     private MetaDecisionAgent decisionAgent;
@@ -62,6 +63,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
         this.statsCounter = 0;
         this.statsStorage = new HashMap<>();
+        this.timeStorage = new HashMap<>();
 
         this.dataPoints = new RankReplayer<>(maxReplaySize);
         this.random = new Random(324);
@@ -182,6 +184,7 @@ public class LocalTrainingServer implements ITrainingServer{
                 public void run() {
                     try {
                         boolean stats = server.isStatsRunner();
+                        int gathered = 0;
                         socket.setSoTimeout(600000);
                         System.out.println("Client connected on port " + port);
 
@@ -207,6 +210,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                             }
 
                                             server.addData(startState, endState, masks, score, startLabels, endLabels);
+                                            gathered++;
                                         } catch (Exception e) {
                                             System.out.println("Error while attempting to upload a data point, point destroyed");
                                         }
@@ -215,6 +219,8 @@ public class LocalTrainingServer implements ITrainingServer{
                                         double score = (double) input.readObject();
                                         if(stats){
                                             server.addScore(score);
+                                            long iterations = server.targetGraphs.get(server.targetGraphs.keySet().iterator().next()).getIterationCount();
+                                            server.timeStorage.put(iterations, (double)gathered);
                                         }
                                         break;
                                     case ("getUpdatedNetwork"):
@@ -488,6 +494,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
         try {
             writeHashMapToCsv("scores.csv", statsStorage);
+            writeHashMapToCsv("times.csv", timeStorage);
         }
         catch (Exception e){
             System.out.println("Failed writing scores to file " + e);
