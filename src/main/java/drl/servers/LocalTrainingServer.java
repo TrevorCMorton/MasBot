@@ -359,6 +359,7 @@ public class LocalTrainingServer implements ITrainingServer{
                     ArrayList<INDArray> maxs = new ArrayList<>();
 
                     for (ArrayList<Integer> inds : this.dependencyGraph.getAgentInds(this.outputs)) {
+                        /*
                         int concatInd = 0;
                         INDArray[] indLabels = new INDArray[inds.size()];
                         for (int i : inds) {
@@ -368,7 +369,8 @@ public class LocalTrainingServer implements ITrainingServer{
                         INDArray max = Nd4j.concat(1, indLabels);
                         max = Nd4j.max(max, 1);
                         maxs.add(max);
-                        /*
+                        */
+
                         int concatInd = 0;
                         INDArray[] curIndLabels = new INDArray[inds.size()];
                         for (int i : inds) {
@@ -387,7 +389,8 @@ public class LocalTrainingServer implements ITrainingServer{
                         for (int i : inds) {
                             targetMax = targetMax.add(maxBools[i].mul(targetLabels[i]));
                         }
-
+                        maxs.add(targetMax);
+                        /*
                         for (int i : inds) {
                             targetMaxs[i] = targetMax;
                         }
