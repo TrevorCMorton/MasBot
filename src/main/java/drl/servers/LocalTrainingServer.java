@@ -34,6 +34,7 @@ public class LocalTrainingServer implements ITrainingServer{
     private int statsCounter;
     private HashMap<Long, Double> statsStorage;
     private HashMap<Long, Double> timeStorage;
+    double bestCount = Double.MAX_VALUE * -1.0;
 
     private HashMap<GraphMetadata, ComputationGraph> graphs;
     private MetaDecisionAgent decisionAgent;
@@ -184,6 +185,7 @@ public class LocalTrainingServer implements ITrainingServer{
                 public void run() {
                     try {
                         boolean stats = server.isStatsRunner();
+                        byte[] modelBytes = null;
                         int gathered = 0;
                         socket.setSoTimeout(600000);
                         System.out.println("Client connected on port " + port);
@@ -219,8 +221,19 @@ public class LocalTrainingServer implements ITrainingServer{
                                         double score = (double) input.readObject();
                                         if(stats){
                                             server.addScore(score);
-                                            long iterations = server.targetGraphs.get(server.targetGraphs.keySet().iterator().next()).getIterationCount();
+                                            GraphMetadata metadata = server.targetGraphs.keySet().iterator().next();
+                                            long iterations = server.targetGraphs.get(metadata).getIterationCount();
                                             server.timeStorage.put(iterations, (double)gathered);
+
+                                            synchronized (server) {
+                                                if (gathered > server.bestCount && modelBytes != null) {
+                                                    server.bestCount = gathered;
+
+                                                    File f = new File(metadata.getName() + "-best.mod");
+                                                    FileOutputStream fout = new FileOutputStream(f);
+                                                    fout.write(modelBytes);
+                                                }
+                                            }
                                         }
                                         break;
                                     case ("getUpdatedNetwork"):
@@ -231,7 +244,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                         }
 
                                         Path modelPath = Paths.get(server.getModelName(randomData));
-                                        byte[] modelBytes = Files.readAllBytes(modelPath);
+                                        modelBytes = Files.readAllBytes(modelPath);
                                         output.writeObject(modelBytes);
                                         break;
                                     case ("getDependencyGraph"):
@@ -454,6 +467,12 @@ public class LocalTrainingServer implements ITrainingServer{
 
                     if (metaData.targetRotation != 0 && iterations % metaData.targetRotation == 0) {
                         this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true));
+
+                        int serverIterations = this.targetGraphs.get(metaData).getIterationCount();
+
+                        if(serverIterations >= LocalTrainingServer.iterationsToTrain){
+                            this.run = false;
+                        }
                     }
 
                     if (iterations % 100 == 0) {
@@ -484,17 +503,11 @@ public class LocalTrainingServer implements ITrainingServer{
             if (this.pointWait != 0) {
                 this.pointWait -= 1;
             }
-
-            int serverIterations = this.graphs.get(this.graphs.keySet().iterator().next()).getIterationCount();
-
-            if(serverIterations >= LocalTrainingServer.iterationsToTrain){
-                this.run = false;
-            }
         }
 
         try {
-            writeHashMapToCsv("scores.csv", statsStorage);
-            writeHashMapToCsv("times.csv", timeStorage);
+            writeHashMapToCsv("scores", statsStorage);
+            writeHashMapToCsv("times", timeStorage);
         }
         catch (Exception e){
             System.out.println("Failed writing scores to file " + e);
@@ -643,8 +656,10 @@ public class LocalTrainingServer implements ITrainingServer{
     }
 
     private void writeHashMapToCsv(String fileName, HashMap<Long, Double> dataMap ) throws Exception {
-        File f = new File(fileName);
+        File f = new File(fileName + ".csv");
         FileOutputStream fout = new FileOutputStream(f);
+        String csvHeader = "iterations," + fileName + "\n";
+        fout.write(csvHeader.getBytes());
         for(Long key : dataMap.keySet()){
             String csvLine = key + "," + dataMap.get(key) + "\n";
             fout.write(csvLine.getBytes());
