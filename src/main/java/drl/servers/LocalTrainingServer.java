@@ -298,7 +298,7 @@ public class LocalTrainingServer implements ITrainingServer{
         long buildTime = 0;
         long fitTime = 0;
 
-        double alpha = .6;
+        double alpha = .7;
         double probabilitySum = this.getProbabilitySum(alpha, this.dataPoints.getMaxSize());
         ArrayList<Integer> probabilityIndexes = this.getProbabilityIntervals(this.batchSize, alpha, this.dataPoints.getMaxSize());
         /*
@@ -324,7 +324,7 @@ public class LocalTrainingServer implements ITrainingServer{
                 INDArray[][] labels = new INDArray[this.batchSize][];
                 INDArray[][] masks = new INDArray[this.batchSize][];
 
-                double beta = .4 + (this.getProb()) * .6;
+                double beta = .5 + (this.getProb()) * .5;
                 double minP = Math.pow(1.0 / ((double) (this.dataPoints.getMaxSize())), alpha) / probabilitySum;
                 double maxW = Math.pow(this.dataPoints.getMaxSize() * minP, -1.0 * beta);
                 double[] wArray = new double[this.batchSize];
