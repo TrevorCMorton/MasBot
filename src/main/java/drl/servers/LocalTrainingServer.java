@@ -408,14 +408,14 @@ public class LocalTrainingServer implements ITrainingServer{
                         for (int i : inds) {
                             targetMax = targetMax.add(maxBools[i].mul(targetLabels[i]));
                         }
-                        maxs.add(targetMax);
-                        /*
+                        //maxs.add(targetMax);
+
                         for (int i : inds) {
                             targetMaxs[i] = targetMax;
                         }
-                        */
-                    }
 
+                    }
+                    /*
                     INDArray maxSum = Nd4j.zeros(maxs.get(0).shape());
                     for(int i = 0; i < maxs.size(); i++){
                         maxSum.add(maxs.get(i));
@@ -425,7 +425,7 @@ public class LocalTrainingServer implements ITrainingServer{
                     for(int i = 0; i < targetMaxs.length; i++){
                         targetMaxs[i] = maxSum;
                     }
-
+                    */
                     MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(targetMaxs, metaData.decayRate);
 
                     INDArray[] inputLabels = graph.output(dataSet.getFeatures());
