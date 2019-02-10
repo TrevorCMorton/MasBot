@@ -28,9 +28,4 @@ public class MeleeJoystickAgent extends AbstractControlAgent{
     String getControlName() {
         return "Joystick";
     }
-
-    @Override
-    public String getNeutralAction() {
-        return this.name + "R";
-    }
 }

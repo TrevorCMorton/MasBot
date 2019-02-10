@@ -14,6 +14,4 @@ public interface IAgent extends Serializable {
     List<String> getInternalOutputNames();
 
     String getName();
-
-    String getNeutralAction();
 }

@@ -61,7 +61,7 @@ public class MetaDecisionAgent {
         ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
             .seed(123)
             .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-            .updater(new RmsProp(.00025 / 2))
+            .updater(new RmsProp(.00025 / 4))
             .graphBuilder();
 
         Collection<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getNodes();
@@ -134,25 +134,26 @@ public class MetaDecisionAgent {
         ArrayList<ArrayList<Integer>> agentInds = this.dependencyGraph.getAgentInds(this.outputs);
 
         for(ArrayList<Integer> agentInd : agentInds){
-            if(this.orphanInputs.containsKey(agentInd.get(0))){
-                float max = outputs[agentInd.get(0)].getFloat(0);
-                int best = agentInd.get(0);
-                for(int index : agentInd){
-                    float val = outputs[index].getFloat(0);
-                    System.out.print(this.outputs[index] + ": " + val + " ");
-                    if(val > max){
-                        max = val;
-                        best = index;
-                    }
+            float max = outputs[agentInd.get(0)].getFloat(0);
+            int best = agentInd.get(0);
+            for(int index : agentInd){
+                float val = outputs[index].getFloat(0);
+                System.out.print(this.outputs[index] + ": " + val + " ");
+                if(val > max){
+                    max = val;
+                    best = index;
                 }
-
-                if(Math.random() > prob){
-                    best = agentInd.get((int)(Math.random() * agentInd.size()));
-                }
-
-                actions.add(this.outputs[best]);
-                System.out.println();
             }
+
+            if(Math.random() > prob){
+                best = agentInd.get((int)(Math.random() * agentInd.size()));
+            }
+
+            if(this.orphanInputs.containsKey(agentInd.get(0))) {
+                actions.add(this.outputs[best]);
+            }
+
+            System.out.println(" Best: " + this.outputs[best]);
         }
 
         String[] actionArray = new String[actions.size()];

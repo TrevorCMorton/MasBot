@@ -18,9 +18,4 @@ public class MeleeButtonAgent extends AbstractControlAgent{
     String getControlName() {
         return "Button";
     }
-
-    @Override
-    public String getNeutralAction() {
-        return "R" + this.name;
-    }
 }

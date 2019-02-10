@@ -2,6 +2,7 @@ package drl.servers;
 
 import drl.AgentDependencyGraph;
 import drl.MetaDecisionAgent;
+import drl.agents.CombinationControlAgent;
 import drl.agents.IAgent;
 import drl.agents.MeleeButtonAgent;
 import drl.agents.MeleeJoystickAgent;
@@ -98,10 +99,12 @@ public class LocalTrainingServer implements ITrainingServer{
         IAgent bbuttonAgent = new MeleeButtonAgent("B");
         IAgent cstickAgent = new MeleeJoystickAgent("C");
         IAgent abuttonAgent = new MeleeButtonAgent("A");
-        dependencyGraph.addAgent(null, bbuttonAgent, "B");
+        IAgent combination = new CombinationControlAgent(new String[][]{{"MR", "MN", "MNE", "ME", "MSE", "MS", "MSW", "MW", "MNW" },{"PB", "RB"}});
+        //dependencyGraph.addAgent(null, bbuttonAgent, "B");
         //dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
-        dependencyGraph.addAgent(new String[]{"B"}, joystickAgent, "M");
+        //dependencyGraph.addAgent(new String[]{"B"}, joystickAgent, "M");
         //dependencyGraph.addAgent(new String[]{"M"}, cstickAgent, "C");
+        dependencyGraph.addAgent(null, combination, "Comb");
 
         int replaySize = Integer.parseInt(args[0]);
         int batchSize = Integer.parseInt(args[1]);
