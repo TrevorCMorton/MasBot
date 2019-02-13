@@ -19,7 +19,7 @@ import org.nd4j.linalg.learning.config.*;
 import java.util.*;
 
 public class MetaDecisionAgent {
-    public static final int size = 120;
+    public static final int size = 80;
     public static final int depth = 4;
 
     private ComputationGraph metaGraph;
