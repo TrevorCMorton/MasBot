@@ -256,7 +256,7 @@ public class MetaDecisionAgent {
     private List<String> buildEnvironmentInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
         this.addInput(builder, "Screen", InputType.convolutionalFlat(MetaDecisionAgent.size, MetaDecisionAgent.size,4));
 
-        int convOutSize = ((((MetaDecisionAgent.size - 8) / 4 + 1) - 4) / 3 + 1) - 2;
+        int convOutSize = ((((MetaDecisionAgent.size - 8) / 4 + 1) - 6) / 3 + 1) - 2;
 
         builder
                 .addLayer("Screen1",
