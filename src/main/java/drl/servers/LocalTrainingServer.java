@@ -460,6 +460,7 @@ public class LocalTrainingServer implements ITrainingServer{
                     long graphBuild = System.currentTimeMillis();
 
                     graph.fit(dataSet);
+                    Nd4j.getMemoryManager().invokeGc();
 
                     long graphFit = System.currentTimeMillis();
 
@@ -479,8 +480,6 @@ public class LocalTrainingServer implements ITrainingServer{
                     }
 
                     if (iterations % 100 == 0) {
-                        Nd4j.getMemoryManager().invokeGc();
-                        Nd4j.getWorkspaceManager().destroyAllWorkspacesForCurrentThread();
                         System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / 100));
                         System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / 100));
                         System.out.println("Total build time: " + buildTime + " average was " + (buildTime / 100));
