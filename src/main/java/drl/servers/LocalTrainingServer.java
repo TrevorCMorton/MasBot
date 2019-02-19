@@ -12,6 +12,7 @@ import drl.collections.RankReplayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.deeplearning4j.util.ModelSerializer;
+import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.MultiDataSet;
 import org.nd4j.linalg.factory.Nd4j;
@@ -83,6 +84,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
     public static void main(String[] args) throws Exception{
         Nd4j.getMemoryManager().togglePeriodicGc(false);
+        Nd4j.setDataType(DataBuffer.Type.FLOAT);
 
         /*
         HashMap<Long, Double> csvTest = new HashMap<>();
@@ -460,7 +462,6 @@ public class LocalTrainingServer implements ITrainingServer{
                     long graphBuild = System.currentTimeMillis();
 
                     graph.fit(dataSet);
-                    Nd4j.getMemoryManager().invokeGc();
 
                     long graphFit = System.currentTimeMillis();
 
@@ -480,6 +481,7 @@ public class LocalTrainingServer implements ITrainingServer{
                     }
 
                     if (iterations % 100 == 0) {
+                        Nd4j.getMemoryManager().invokeGc();
                         System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / 100));
                         System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / 100));
                         System.out.println("Total build time: " + buildTime + " average was " + (buildTime / 100));

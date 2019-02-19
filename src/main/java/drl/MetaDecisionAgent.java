@@ -4,7 +4,6 @@ import drl.agents.IAgent;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
-import org.deeplearning4j.nn.conf.WorkspaceMode;
 import org.deeplearning4j.nn.conf.graph.PreprocessorVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.BatchNormalization;
@@ -63,7 +62,6 @@ public class MetaDecisionAgent {
             .seed(123)
             .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
             .updater(new RmsProp(.00025 / 4))
-            .trainingWorkspaceMode(WorkspaceMode.SEPARATE)
             .graphBuilder();
 
         Collection<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getNodes();
@@ -258,11 +256,11 @@ public class MetaDecisionAgent {
     private List<String> buildEnvironmentInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
         this.addInput(builder, "Screen", InputType.convolutionalFlat(MetaDecisionAgent.size, MetaDecisionAgent.size,4));
 
-        int convOutSize = ((((MetaDecisionAgent.size - 10) / 5 + 1) - 6) / 3 + 1) - 2;
+        int convOutSize = ((((MetaDecisionAgent.size - 8) / 4 + 1) - 4) / 3 + 1) - 2;
 
         builder
                 .addLayer("Screen1",
-                        new ConvolutionLayer.Builder(10, 10).nIn(4).stride(5, 5).nOut(32).weightInit(WeightInit.XAVIER).activation(Activation.RELU).build(),
+                        new ConvolutionLayer.Builder(8, 8).nIn(4).stride(4, 4).nOut(32).weightInit(WeightInit.XAVIER).activation(Activation.RELU).build(),
                         "Screen")
                 .addLayer("Screen2",
                         new ConvolutionLayer.Builder(6, 6).stride(3, 3).nOut(64).weightInit(WeightInit.XAVIER).activation(Activation.RELU).build(),
