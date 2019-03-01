@@ -256,14 +256,14 @@ public class MetaDecisionAgent {
     private List<String> buildEnvironmentInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
         this.addInput(builder, "Screen", InputType.convolutionalFlat(MetaDecisionAgent.size, MetaDecisionAgent.size,4));
 
-        int convOutSize = ((((MetaDecisionAgent.size - 8) / 4 + 1) - 6) / 3 + 1) - 2;
+        int convOutSize = ((((MetaDecisionAgent.size - 16) / 8 + 1) - 4) / 2 + 1) - 2;
 
         builder
                 .addLayer("Screen1",
-                        new ConvolutionLayer.Builder(8, 8).nIn(4).stride(4, 4).nOut(32).weightInit(WeightInit.XAVIER).activation(Activation.RELU).build(),
+                        new ConvolutionLayer.Builder(16, 16).nIn(4).stride(8, 8).nOut(32).weightInit(WeightInit.XAVIER).activation(Activation.RELU).build(),
                         "Screen")
                 .addLayer("Screen2",
-                        new ConvolutionLayer.Builder(6, 6).stride(3, 3).nOut(64).weightInit(WeightInit.XAVIER).activation(Activation.RELU).build(),
+                        new ConvolutionLayer.Builder(4, 4).stride(2, 2).nOut(64).weightInit(WeightInit.XAVIER).activation(Activation.RELU).build(),
                         "Screen1")
                 .addLayer("Screen3",
                         new ConvolutionLayer.Builder(3, 3).stride(1, 1).nOut(64).weightInit(WeightInit.XAVIER).activation(Activation.RELU).build(),
