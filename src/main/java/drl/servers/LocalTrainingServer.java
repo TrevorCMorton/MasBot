@@ -220,6 +220,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                             gathered++;
                                         } catch (Exception e) {
                                             System.out.println("Error while attempting to upload a data point, point destroyed");
+                                            System.out.println(e);
                                         }
                                         break;
                                     case ("addScore"):
