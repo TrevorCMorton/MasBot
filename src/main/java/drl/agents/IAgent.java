@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface IAgent extends Serializable {
 
-    List<String> build(ComputationGraphConfiguration.GraphBuilder builder, List<String> envInputNames, List<String> dependencyInputNames);
+    List<String> build(ComputationGraphConfiguration.GraphBuilder builder, List<String> envInputNames, List<String> dependencyInputNames, boolean makeOutputs);
 
     List<String> getOutputNames();
 

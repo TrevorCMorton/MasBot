@@ -15,7 +15,7 @@ public abstract class AbstractControlAgent implements IAgent{
     String name;
 
     @Override
-    public List<String> build(ComputationGraphConfiguration.GraphBuilder builder, List<String> envInputNames, List<String> dependencyInputNames) {
+    public List<String> build(ComputationGraphConfiguration.GraphBuilder builder, List<String> envInputNames, List<String> dependencyInputNames, boolean buildOutputs) {
         String[] mergeInputs = new String[dependencyInputNames.size() + envInputNames.size()];
 
         for(int i = 0; i < dependencyInputNames.size(); i++){
@@ -34,13 +34,22 @@ public abstract class AbstractControlAgent implements IAgent{
         for(int i = 0; i < outputNames.size(); i++){
             String outputName = outputNames.get(i);
 
-            builder
-                    .addLayer(outputName + "Internal",
-                            new DenseLayer.Builder().nOut(1).weightInit(WeightInit.XAVIER).activation(Activation.IDENTITY).build(),
-                            this.name + this.getControlName() + "1")
-                    .addLayer(outputName,
+
+            if(buildOutputs){
+                builder
+                        .addLayer(outputName + "Internal",
+                                new DenseLayer.Builder().nOut(1).weightInit(WeightInit.XAVIER).activation(Activation.IDENTITY).build(),
+                                this.name + this.getControlName() + "1")
+                        .addLayer(outputName,
                             new LossLayer.Builder().lossFunction(LossFunctions.LossFunction.L2).build(),
                             outputName + "Internal");
+            }
+            else{
+                builder
+                        .addLayer(outputName,
+                                new DenseLayer.Builder().nOut(1).weightInit(WeightInit.XAVIER).activation(Activation.IDENTITY).build(),
+                                this.name + this.getControlName() + "1");
+            }
         }
 
         return this.getOutputNames();

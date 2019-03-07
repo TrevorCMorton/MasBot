@@ -9,7 +9,9 @@ import drl.agents.MeleeJoystickAgent;
 import drl.collections.IReplayer;
 import drl.collections.RandomReplayer;
 import drl.collections.RankReplayer;
+import org.deeplearning4j.nn.gradient.Gradient;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.buffer.DataBuffer;
@@ -48,6 +50,8 @@ public class LocalTrainingServer implements ITrainingServer{
     private IReplayer<DataPoint> dataPoints;
 
     private int batchSize;
+    private double learningRate;
+    private boolean prioritizedReplay;
     private Random random;
     private boolean connectFromNetwork;
     private int pointsGathered;
@@ -58,8 +62,9 @@ public class LocalTrainingServer implements ITrainingServer{
 
     private HashMap<Long, Thread> threads;
 
-    public LocalTrainingServer(boolean connectFromNetwork, int maxReplaySize, int batchSize, AgentDependencyGraph dependencyGraph){
+    public LocalTrainingServer(boolean connectFromNetwork, int maxReplaySize, int batchSize, double learningRate, boolean prioritizedReplay, AgentDependencyGraph dependencyGraph){
         this.batchSize = batchSize;
+        this.learningRate = learningRate;
         this.connectFromNetwork = connectFromNetwork;
 
         this.pointWait = 5;
@@ -68,7 +73,13 @@ public class LocalTrainingServer implements ITrainingServer{
         this.statsStorage = new HashMap<>();
         this.timeStorage = new HashMap<>();
 
-        this.dataPoints = new RankReplayer<>(maxReplaySize);
+        this.prioritizedReplay = prioritizedReplay;
+        if(this.prioritizedReplay){
+            this.dataPoints = new RankReplayer<>(maxReplaySize);
+        }
+        else{
+            this.dataPoints = new RandomReplayer<>(maxReplaySize);
+        }
         this.random = new Random(324);
 
         this.dependencyGraph = dependencyGraph;
@@ -110,9 +121,11 @@ public class LocalTrainingServer implements ITrainingServer{
 
         int replaySize = Integer.parseInt(args[0]);
         int batchSize = Integer.parseInt(args[1]);
-        LocalTrainingServer server = new LocalTrainingServer(true, replaySize, batchSize, dependencyGraph);
+        double learningRate = Double.parseDouble(args[2]);
+        boolean prioritizedReplay = Boolean.parseBoolean(args[3]);
+        LocalTrainingServer server = new LocalTrainingServer(true, replaySize, batchSize, learningRate, prioritizedReplay, dependencyGraph);
 
-        InputStream input = new FileInputStream(args[2]);
+        InputStream input = new FileInputStream(args[4]);
         Scanner kb = new Scanner(input);
         while(kb.hasNext()){
             String line = kb.nextLine();
@@ -132,14 +145,14 @@ public class LocalTrainingServer implements ITrainingServer{
                 System.out.println(model.summary());
             }
             else{
-                MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, 0);
+                MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, 0, learningRate, !prioritizedReplay);
                 server.addGraph(metaData, agent.getMetaGraph());
                 dependencyGraph.resetNodes();
                 System.out.println(agent.getMetaGraph().summary());
             }
         }
 
-        server.decisionAgent = new MetaDecisionAgent(dependencyGraph, 1);
+        server.decisionAgent = new MetaDecisionAgent(dependencyGraph, 1, learningRate, !prioritizedReplay);
         server.outputs = server.decisionAgent.getOutputNames();
 
         Thread t = new Thread(server);
@@ -337,21 +350,34 @@ public class LocalTrainingServer implements ITrainingServer{
                 double[] wArray = new double[this.batchSize];
 
                 synchronized (this.dataPoints) {
-                    int lastLabel = 0;
-                    for (int i = 0; i < probabilityIndexes.size(); i++) {
-                        int index = probabilityIndexes.get(i) == 0 ? 0 : this.random.nextInt(probabilityIndexes.get(i) - lastLabel) + lastLabel + 1;
-                        DataPoint data = this.dataPoints.get(index - i);
-                        batchPoints[i] = data;
+                    if(prioritizedReplay) {
+                        int lastLabel = 0;
+                        for (int i = 0; i < probabilityIndexes.size(); i++) {
+                            int index = probabilityIndexes.get(i) == 0 ? 0 : this.random.nextInt(probabilityIndexes.get(i) - lastLabel) + lastLabel + 1;
+                            DataPoint data = this.dataPoints.get(index - i);
+                            batchPoints[i] = data;
 
-                        double p = Math.pow(1.0 / ((double) (index + 1)), alpha) / probabilitySum;
-                        wArray[i] = Math.pow(this.dataPoints.getMaxSize() * p, -1.0 * beta) / maxW;
+                            double p = Math.pow(1.0 / ((double) (index + 1)), alpha) / probabilitySum;
+                            wArray[i] = Math.pow(this.dataPoints.getMaxSize() * p, -1.0 * beta) / maxW;
 
-                        lastLabel = probabilityIndexes.get(i);
+                            lastLabel = probabilityIndexes.get(i);
 
-                        startStates[i] = data.getStartState();
-                        endStates[i] = data.getEndState();
-                        labels[i] = data.getLabels();
-                        masks[i] = data.getMasks();
+                            startStates[i] = data.getStartState();
+                            endStates[i] = data.getEndState();
+                            labels[i] = data.getLabels();
+                            masks[i] = data.getMasks();
+                        }
+                    }
+                    else{
+                        for(int i = 0; i < this.batchSize; i++){
+                            int ind = (int)(Math.random() * this.dataPoints.size());
+                            DataPoint data = this.dataPoints.get(ind);
+                            batchPoints[i] = data;
+                            startStates[i] = data.getStartState();
+                            endStates[i] = data.getEndState();
+                            labels[i] = data.getLabels();
+                            masks[i] = data.getMasks();
+                        }
                     }
                 }
 
@@ -435,36 +461,68 @@ public class LocalTrainingServer implements ITrainingServer{
                     */
                     MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(targetMaxs, metaData.decayRate);
 
-                    INDArray[] inputLabels = graph.output(dataSet.getFeatures());
-                    INDArray[] error = new INDArray[dataSet.getLabels().length];
-                    INDArray absTotalError = Nd4j.zeros(w.shape());
-                    INDArray[] qLabels = dataSet.getLabels();
-                    INDArray[] dataMasks = cumulativeData.getMasks();
-
-                    for(int i = 0; i < error.length; i++){
-                        error[i] = qLabels[i].sub(inputLabels[i]);
-                        absTotalError = absTotalError.add(abs(error[i].mul(dataMasks[i])));
-                    }
-
-                    INDArray[] weightedLabels = new INDArray[dataSet.getLabels().length];
-
-                    for(int i = 0; i < weightedLabels.length; i++){
-                        weightedLabels[i] = inputLabels[i].add(error[i].mul(w));
-                    }
-
-                    dataSet.setLabels(weightedLabels);
-
-                    double[] errors = absTotalError.toDoubleVector();
-                    synchronized (this.dataPoints) {
-                        for (int k = 0; k < batchPoints.length; k++) {
-                            this.dataPoints.add(errors[k], batchPoints[k]);
-                        }
-                    }
-
                     long graphBuild = System.currentTimeMillis();
 
-                    graph.fit(dataSet);
+                    if(this.prioritizedReplay) {
 
+                        INDArray[] inputLabels = graph.output(dataSet.getFeatures());
+                        INDArray[] error = new INDArray[dataSet.getLabels().length];
+                        INDArray absTotalError = Nd4j.zeros(w.shape());
+                        INDArray[] qLabels = dataSet.getLabels();
+                        INDArray[] dataMasks = cumulativeData.getMasks();
+
+                        for (int i = 0; i < error.length; i++) {
+                            error[i] = qLabels[i].sub(inputLabels[i]);
+                            absTotalError = absTotalError.add(abs(error[i].mul(dataMasks[i])));
+                        }
+
+                        INDArray[] weightedLabels = new INDArray[dataSet.getLabels().length];
+                        INDArray[] weightedErrors = new INDArray[dataSet.getLabels().length];
+                        INDArray[] epsilons = new INDArray[dataSet.getLabels().length];
+                        INDArray[] squaredError = new INDArray[dataSet.getLabels().length];
+
+                        for (int i = 0; i < weightedLabels.length; i++) {
+                            weightedLabels[i] = inputLabels[i].add(error[i].mul(w));
+                            epsilons[i] = error[i].mul(dataMasks[i]);
+                            weightedErrors[i] = epsilons[i].mul(w);
+                            squaredError[i] = epsilons[i].mul(epsilons[i]);
+                        }
+
+                        dataSet.setLabels(weightedLabels);
+
+                        double[] errors = absTotalError.toDoubleVector();
+                        synchronized (this.dataPoints) {
+                            for (int k = 0; k < batchPoints.length; k++) {
+                                this.dataPoints.add(errors[k], batchPoints[k]);
+                            }
+                        }
+
+
+                        INDArray params = graph.params().dup();
+                        INDArray cumGrad = Nd4j.zeros(params.shape());
+
+                        for (int ind = 0; ind < this.batchSize; ind++) {
+                            INDArray[] featureSlice = this.getArraySlices(dataSet.getFeatures(), ind);
+                            INDArray[] labelSlice = this.getArraySlices(squaredError, ind);
+                            graph.feedForward(featureSlice, true, false);
+                            Gradient grad = graph.backpropGradient(labelSlice);
+                            graph.getUpdater().update(grad, iterations, 0, this.batchSize, LayerWorkspaceMgr.noWorkspaces());
+                            cumGrad.addi(grad.gradient().mul(wArray[ind]));
+                        }
+
+                        INDArray updatedParams = params.sub(cumGrad);
+                        graph.setParams(updatedParams);
+
+                    }
+                    else {
+                        graph.fit(dataSet);
+
+                        synchronized (this.dataPoints) {
+                            for (int k = 0; k < batchPoints.length; k++) {
+                                this.dataPoints.add(0, batchPoints[k]);
+                            }
+                        }
+                    }
                     long graphFit = System.currentTimeMillis();
 
                     batchTime += batch - startTime;
@@ -747,6 +805,19 @@ public class LocalTrainingServer implements ITrainingServer{
         }catch(IOException e){
             System.out.println(e);
         }
+    }
+
+    private INDArray[] getArraySlices(INDArray[] arrays, int ind){
+        INDArray[] slices = new INDArray[arrays.length];
+
+        for(int i = 0; i < arrays.length; i++){
+            long[] shape = arrays[0].shape().clone();
+            shape[0] = 1;
+            slices[i] = arrays[i].slice(ind, 0);
+            slices[i] = slices[i].reshape(shape);
+        }
+
+        return slices;
     }
 
 }

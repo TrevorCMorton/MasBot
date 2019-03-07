@@ -3,6 +3,7 @@ package drl;
 import drl.agents.IAgent;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.GradientNormalization;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.graph.PreprocessorVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
@@ -31,6 +32,7 @@ public class MetaDecisionAgent {
     private long iters;
     private double prob;
     private INDArray[] cachedLabels;
+    private boolean makeOutputs;
 
     private long evals;
     private long initSetupTime;
@@ -39,9 +41,10 @@ public class MetaDecisionAgent {
     private long layerDecisionTime;
     private long layerCleanupTime;
 
-    public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, double prob){
+    public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, double prob, double learningRate, boolean makeOutputs){
         this.dependencyGraph = dependencyGraph;
         this.prob = prob;
+        this.makeOutputs = makeOutputs;
 
         iters = 0;
 
@@ -61,7 +64,8 @@ public class MetaDecisionAgent {
         ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
             .seed(123)
             .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-            .updater(new RmsProp(.00025 / 4))
+            .updater(new RmsProp(learningRate))
+            .gradientNormalization(GradientNormalization.ClipElementWiseAbsoluteValue).gradientNormalizationThreshold(1)
             .graphBuilder();
 
         Collection<AgentDependencyGraph.Node> nodes = this.dependencyGraph.getNodes();
@@ -291,7 +295,7 @@ public class MetaDecisionAgent {
         }
 
         IAgent nodeAgent = node.agent;
-        List<String> outputs = nodeAgent.build(builder, envInputNames, dependencyNames);
+        List<String> outputs = nodeAgent.build(builder, envInputNames, dependencyNames, this.makeOutputs);
 
         if(node.dependents.size() != 0) {
             for (String output : outputs) {

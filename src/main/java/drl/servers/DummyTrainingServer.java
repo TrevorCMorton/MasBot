@@ -21,10 +21,11 @@ public class DummyTrainingServer implements ITrainingServer {
             System.out.println("Loading model from file");
             ComputationGraph model = ModelSerializer.restoreComputationGraph(pretrained, true);
             this.graph = model;
+            System.out.println("Iterations: " + model.getIterationCount());
             System.out.println(model.summary());
         }
         else{
-            MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, this.getProb());
+            MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, this.getProb(), .00025, true);
             this.graph = agent.getMetaGraph();
             dependencyGraph.resetNodes();
             System.out.println(agent.getMetaGraph().summary());

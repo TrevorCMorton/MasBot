@@ -7,7 +7,6 @@ import org.deeplearning4j.nn.graph.ComputationGraph;
 public class RandomReplayer<T> implements IReplayer<T>{
     private CircularFifoQueue<T> points;
 
-
     public RandomReplayer(int maxSize){
         this.points = new CircularFifoQueue<>(maxSize);
     }
@@ -19,6 +18,9 @@ public class RandomReplayer<T> implements IReplayer<T>{
 
     @Override
     public T get(int i) {
+        if(i == 0){
+            return this.points.poll();
+        }
         T temp = this.points.get(i);
         this.points.remove(temp);
         return temp;
