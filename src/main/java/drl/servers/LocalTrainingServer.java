@@ -516,12 +516,6 @@ public class LocalTrainingServer implements ITrainingServer{
                     }
                     else {
                         graph.fit(dataSet);
-
-                        synchronized (this.dataPoints) {
-                            for (int k = 0; k < batchPoints.length; k++) {
-                                this.dataPoints.add(0, batchPoints[k]);
-                            }
-                        }
                     }
                     long graphFit = System.currentTimeMillis();
 

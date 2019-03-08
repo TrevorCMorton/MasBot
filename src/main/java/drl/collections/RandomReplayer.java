@@ -22,7 +22,6 @@ public class RandomReplayer<T> implements IReplayer<T>{
             return this.points.poll();
         }
         T temp = this.points.get(i);
-        this.points.remove(temp);
         return temp;
     }
 
