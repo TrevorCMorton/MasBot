@@ -18,9 +18,6 @@ public class RandomReplayer<T> implements IReplayer<T>{
 
     @Override
     public T get(int i) {
-        if(i == 0){
-            return this.points.poll();
-        }
         T temp = this.points.get(i);
         return temp;
     }
