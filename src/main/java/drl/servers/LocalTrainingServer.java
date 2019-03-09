@@ -705,7 +705,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
     private boolean isStatsRunner(){
         if (this.statsCounter <= 0) {
-            this.statsCounter = 10;
+            this.statsCounter = 5;
             return true;
         }
         else{
