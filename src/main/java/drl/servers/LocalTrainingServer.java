@@ -703,7 +703,7 @@ public class LocalTrainingServer implements ITrainingServer{
         this.graphs.get(metaData).setListeners(new PerformanceListener(100, reportScore));
     }
 
-    private boolean isStatsRunner(){
+    private synchronized boolean isStatsRunner(){
         if (this.statsCounter <= 0) {
             this.statsCounter = 5;
             return true;
