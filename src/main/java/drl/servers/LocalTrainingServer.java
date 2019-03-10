@@ -33,7 +33,7 @@ import static org.nd4j.linalg.ops.transforms.Transforms.abs;
 
 public class LocalTrainingServer implements ITrainingServer{
     public static final int port = 1612;
-    public static final long iterationsToTrain = 100000;
+    public static final long iterationsToTrain = 500000;
 
     private int statsCounter;
     private HashMap<Long, Double> statsStorage;
@@ -677,7 +677,7 @@ public class LocalTrainingServer implements ITrainingServer{
     @Override
     public double getProb() {
         long iterations = this.graphs.get(this.graphs.keySet().iterator().next()).getIterationCount();
-        double prob = (double) iterations / (double) LocalTrainingServer.iterationsToTrain;
+        double prob = (double) iterations / (double) LocalTrainingServer.iterationsToTrain * .9;
         return prob;
     }
 
