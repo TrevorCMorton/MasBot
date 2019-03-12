@@ -2,6 +2,7 @@ package drl.servers;
 
 import drl.AgentDependencyGraph;
 import drl.MetaDecisionAgent;
+import drl.WeightedActivationRelu;
 import drl.agents.CombinationControlAgent;
 import drl.agents.IAgent;
 import drl.agents.MeleeButtonAgent;
@@ -14,6 +15,8 @@ import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.deeplearning4j.util.ModelSerializer;
+import org.nd4j.linalg.activations.IActivation;
+import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.MultiDataSet;
@@ -52,6 +55,7 @@ public class LocalTrainingServer implements ITrainingServer{
     private int batchSize;
     private double learningRate;
     private boolean prioritizedReplay;
+    private List<IActivation> activations;
     private Random random;
     private boolean connectFromNetwork;
     private int pointsGathered;
@@ -74,6 +78,7 @@ public class LocalTrainingServer implements ITrainingServer{
         this.timeStorage = new HashMap<>();
 
         this.prioritizedReplay = prioritizedReplay;
+        this.activations = new ArrayList<>();
         if(this.prioritizedReplay){
             this.dataPoints = new RankReplayer<>(maxReplaySize);
         }
@@ -138,21 +143,21 @@ public class LocalTrainingServer implements ITrainingServer{
 
             File pretrained = new File(server.getModelName(metaData));
 
-            if(pretrained.exists()){
+            if(!prioritizedReplay && pretrained.exists()){
                 System.out.println("Loading model from file");
                 ComputationGraph model = ModelSerializer.restoreComputationGraph(pretrained, true);
                 server.addGraph(metaData, model);
                 System.out.println(model.summary());
             }
             else{
-                MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, 0, learningRate, !prioritizedReplay);
+                MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, server.activations,0, learningRate, !prioritizedReplay);
                 server.addGraph(metaData, agent.getMetaGraph());
                 dependencyGraph.resetNodes();
                 System.out.println(agent.getMetaGraph().summary());
             }
         }
 
-        server.decisionAgent = new MetaDecisionAgent(dependencyGraph, 1, learningRate, !prioritizedReplay);
+        server.decisionAgent = new MetaDecisionAgent(dependencyGraph, server.activations, 1, learningRate, !prioritizedReplay);
         server.outputs = server.decisionAgent.getOutputNames();
 
         Thread t = new Thread(server);
@@ -499,6 +504,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
 
                         INDArray params = graph.params().dup();
+                        /*
                         INDArray cumGrad = Nd4j.zeros(params.shape());
 
                         for (int ind = 0; ind < this.batchSize; ind++) {
@@ -512,6 +518,16 @@ public class LocalTrainingServer implements ITrainingServer{
 
                         INDArray updatedParams = params.sub(cumGrad);
                         graph.setParams(updatedParams);
+                        */
+                        for(IActivation activation : this.activations){
+                            ((WeightedActivationRelu)activation).setWeight(w);
+                        }
+
+                        graph.feedForward(dataSet.getFeatures(), true, false);
+                        Gradient grad = graph.backpropGradient(squaredError);
+                        graph.getUpdater().update(grad, iterations, 0, this.batchSize, LayerWorkspaceMgr.noWorkspaces());
+                        INDArray newParams = params.sub(grad.gradient());
+                        graph.setParams(newParams);
 
                     }
                     else {

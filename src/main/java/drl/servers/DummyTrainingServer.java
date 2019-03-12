@@ -4,9 +4,11 @@ import drl.AgentDependencyGraph;
 import drl.MetaDecisionAgent;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.util.ModelSerializer;
+import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
 import java.io.File;
+import java.util.ArrayList;
 
 public class DummyTrainingServer implements ITrainingServer {
     private ComputationGraph graph;
@@ -25,7 +27,7 @@ public class DummyTrainingServer implements ITrainingServer {
             System.out.println(model.summary());
         }
         else{
-            MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, this.getProb(), .00025, true);
+            MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, new ArrayList<>(), this.getProb(), .00025, true);
             this.graph = agent.getMetaGraph();
             dependencyGraph.resetNodes();
             System.out.println(agent.getMetaGraph().summary());

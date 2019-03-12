@@ -1,10 +1,13 @@
 package drl.agents;
 
+import drl.WeightedActivationRelu;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.LossLayer;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.nd4j.linalg.activations.Activation;
+import org.nd4j.linalg.activations.IActivation;
+import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
 import java.util.ArrayList;
@@ -15,7 +18,7 @@ public abstract class AbstractControlAgent implements IAgent{
     String name;
 
     @Override
-    public List<String> build(ComputationGraphConfiguration.GraphBuilder builder, List<String> envInputNames, List<String> dependencyInputNames, boolean buildOutputs) {
+    public List<String> build(ComputationGraphConfiguration.GraphBuilder builder, List<String> envInputNames, List<String> dependencyInputNames, boolean buildOutputs, List<IActivation> activations) {
         String[] mergeInputs = new String[dependencyInputNames.size() + envInputNames.size()];
 
         for(int i = 0; i < dependencyInputNames.size(); i++){
@@ -27,8 +30,17 @@ public abstract class AbstractControlAgent implements IAgent{
             mergeInputs[i + dependencyInputNames.size()] = envInputNames.get(i);
         }
 
+        IActivation activation;
+        if(buildOutputs){
+            activation = new ActivationReLU();
+        }
+        else{
+            activation = new WeightedActivationRelu();
+        }
+        activations.add(activation);
+
         builder.addLayer(this.name + this.getControlName() + "1",
-                        new DenseLayer.Builder().nOut(512).activation(Activation.RELU).build(),
+                        new DenseLayer.Builder().nOut(512).activation(activation).build(),
                         mergeInputs);
 
         for(int i = 0; i < outputNames.size(); i++){

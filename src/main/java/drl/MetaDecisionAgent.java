@@ -13,6 +13,8 @@ import org.deeplearning4j.nn.conf.preprocessor.CnnToFeedForwardPreProcessor;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.nd4j.linalg.activations.Activation;
+import org.nd4j.linalg.activations.IActivation;
+import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.*;
@@ -41,8 +43,11 @@ public class MetaDecisionAgent {
     private long layerDecisionTime;
     private long layerCleanupTime;
 
-    public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, double prob, double learningRate, boolean makeOutputs){
+    private List<IActivation> activations;
+
+    public MetaDecisionAgent(AgentDependencyGraph dependencyGraph, List<IActivation> activations, double prob, double learningRate, boolean makeOutputs){
         this.dependencyGraph = dependencyGraph;
+        this.activations = activations;
         this.prob = prob;
         this.makeOutputs = makeOutputs;
 
@@ -260,17 +265,35 @@ public class MetaDecisionAgent {
     private List<String> buildEnvironmentInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
         this.addInput(builder, "Screen", InputType.convolutionalFlat(MetaDecisionAgent.size, MetaDecisionAgent.size, MetaDecisionAgent.depth));
 
+        IActivation activation1;
+        IActivation activation2;
+        IActivation activation3;
+
+        if(!this.makeOutputs){
+            activation1 = new WeightedActivationRelu();
+            activation2 = new WeightedActivationRelu();
+            activation3 = new WeightedActivationRelu();
+        }
+        else{
+            activation1 = new ActivationReLU();
+            activation2 = new ActivationReLU();
+            activation3 = new ActivationReLU();
+        }
+        this.activations.add(activation1);
+        this.activations.add(activation2);
+        this.activations.add(activation3);
+
         int convOutSize = ((((MetaDecisionAgent.size - 16) / 8 + 1) - 4) / 2 + 1) - 2;
 
         builder
                 .addLayer("Screen1",
-                        new ConvolutionLayer.Builder(16, 16).nIn(MetaDecisionAgent.depth).stride(8, 8).nOut(32).weightInit(WeightInit.XAVIER).activation(Activation.RELU).build(),
+                        new ConvolutionLayer.Builder(16, 16).nIn(MetaDecisionAgent.depth).stride(8, 8).nOut(32).weightInit(WeightInit.XAVIER).activation(activation1).build(),
                         "Screen")
                 .addLayer("Screen2",
-                        new ConvolutionLayer.Builder(4, 4).stride(2, 2).nOut(64).weightInit(WeightInit.XAVIER).activation(Activation.RELU).build(),
+                        new ConvolutionLayer.Builder(4, 4).stride(2, 2).nOut(64).weightInit(WeightInit.XAVIER).activation(activation2).build(),
                         "Screen1")
                 .addLayer("Screen3",
-                        new ConvolutionLayer.Builder(3, 3).stride(1, 1).nOut(64).weightInit(WeightInit.XAVIER).activation(Activation.RELU).build(),
+                        new ConvolutionLayer.Builder(3, 3).stride(1, 1).nOut(64).weightInit(WeightInit.XAVIER).activation(activation3).build(),
                         "Screen2")
                 .addVertex("Screen3Flat",
                     new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize, convOutSize, 64)),
@@ -295,7 +318,7 @@ public class MetaDecisionAgent {
         }
 
         IAgent nodeAgent = node.agent;
-        List<String> outputs = nodeAgent.build(builder, envInputNames, dependencyNames, this.makeOutputs);
+        List<String> outputs = nodeAgent.build(builder, envInputNames, dependencyNames, this.makeOutputs, this.activations);
 
         if(node.dependents.size() != 0) {
             for (String output : outputs) {
