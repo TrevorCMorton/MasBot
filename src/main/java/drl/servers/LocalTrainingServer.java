@@ -39,8 +39,8 @@ public class LocalTrainingServer implements ITrainingServer{
     public static final long iterationsToTrain = 100000;
 
     private int statsCounter;
-    private HashMap<Long, Double> statsStorage;
-    private HashMap<Long, Double> timeStorage;
+    private HashMap<Integer, Double> statsStorage;
+    private HashMap<Integer, Double> timeStorage;
     double bestCount = Double.MAX_VALUE * -1.0;
 
     private HashMap<GraphMetadata, ComputationGraph> graphs;
@@ -247,8 +247,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                         if(stats){
                                             server.addScore(score);
                                             GraphMetadata metadata = server.targetGraphs.keySet().iterator().next();
-                                            long iterations = server.targetGraphs.get(metadata).getIterationCount();
-                                            server.timeStorage.put(iterations, (double)gathered);
+                                            server.timeStorage.put(server.iterations, (double)gathered);
 
                                             synchronized (server) {
                                                 if (gathered > server.bestCount && modelBytes != null) {
@@ -540,18 +539,17 @@ public class LocalTrainingServer implements ITrainingServer{
                     buildTime += graphBuild - graphStart;
                     fitTime += graphFit - graphBuild;
 
-                    if (metaData.targetRotation != 0 && iterations % metaData.targetRotation == 0) {
+                    if (metaData.targetRotation != 0 && this.iterations % metaData.targetRotation == 0) {
                         this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true));
 
-                        int serverIterations = this.targetGraphs.get(metaData).getIterationCount();
-
-                        if(serverIterations >= LocalTrainingServer.iterationsToTrain){
+                        if(this.iterations + 1 >= LocalTrainingServer.iterationsToTrain){
                             this.run = false;
                         }
                     }
 
                     if (iterations % 100 == 0) {
                         Nd4j.getMemoryManager().invokeGc();
+                        System.out.println("Finished iteration " + this.iterations);
                         System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / 100));
                         System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / 100));
                         System.out.println("Total build time: " + buildTime + " average was " + (buildTime / 100));
@@ -623,8 +621,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
     @Override
     public void addScore(double score) {
-        long iterations = this.targetGraphs.get(this.targetGraphs.keySet().iterator().next()).getIterationCount();
-        this.statsStorage.put(iterations, score);
+        this.statsStorage.put(this.iterations, score);
     }
 
     @Override
@@ -692,8 +689,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
     @Override
     public double getProb() {
-        long iterations = this.graphs.get(this.graphs.keySet().iterator().next()).getIterationCount();
-        double prob = (double) iterations / (double) LocalTrainingServer.iterationsToTrain * .9;
+        double prob = (double) this.iterations / (double) LocalTrainingServer.iterationsToTrain * .9;
         return prob;
     }
 
@@ -730,12 +726,12 @@ public class LocalTrainingServer implements ITrainingServer{
         }
     }
 
-    private void writeHashMapToCsv(String fileName, HashMap<Long, Double> dataMap ) throws Exception {
+    private void writeHashMapToCsv(String fileName, HashMap<Integer, Double> dataMap ) throws Exception {
         File f = new File(fileName + ".csv");
         FileOutputStream fout = new FileOutputStream(f);
         String csvHeader = "iterations," + fileName + "\n";
         fout.write(csvHeader.getBytes());
-        for(Long key : dataMap.keySet()){
+        for(int key : dataMap.keySet()){
             String csvLine = key + "," + dataMap.get(key) + "\n";
             fout.write(csvLine.getBytes());
         }
