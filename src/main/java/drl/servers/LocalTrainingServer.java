@@ -36,7 +36,7 @@ import static org.nd4j.linalg.ops.transforms.Transforms.abs;
 
 public class LocalTrainingServer implements ITrainingServer{
     public static final int port = 1612;
-    public static final long iterationsToTrain = 300000;
+    public static final long iterationsToTrain = 100000;
 
     private int statsCounter;
     private HashMap<Long, Double> statsStorage;
