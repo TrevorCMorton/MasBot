@@ -36,8 +36,6 @@ import static org.nd4j.linalg.ops.transforms.Transforms.abs;
 
 public class LocalTrainingServer implements ITrainingServer{
     public static final int port = 1612;
-    public static final long iterationsToTrain = 100000;
-
     private int statsCounter;
     private HashMap<Integer, Double> statsStorage;
     private HashMap<Integer, Double> timeStorage;
@@ -52,6 +50,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
     private IReplayer<DataPoint> dataPoints;
 
+    private long iterationsToTrain;
     private int batchSize;
     private double learningRate;
     private boolean prioritizedReplay;
@@ -66,7 +65,8 @@ public class LocalTrainingServer implements ITrainingServer{
 
     private HashMap<Long, Thread> threads;
 
-    public LocalTrainingServer(boolean connectFromNetwork, int maxReplaySize, int batchSize, double learningRate, boolean prioritizedReplay, AgentDependencyGraph dependencyGraph){
+    public LocalTrainingServer(boolean connectFromNetwork, long iterationsToTrain, int maxReplaySize, int batchSize, double learningRate, boolean prioritizedReplay, AgentDependencyGraph dependencyGraph){
+        this.iterationsToTrain = iterationsToTrain;
         this.batchSize = batchSize;
         this.learningRate = learningRate;
         this.connectFromNetwork = connectFromNetwork;
@@ -128,9 +128,10 @@ public class LocalTrainingServer implements ITrainingServer{
         int batchSize = Integer.parseInt(args[1]);
         double learningRate = Double.parseDouble(args[2]);
         boolean prioritizedReplay = Boolean.parseBoolean(args[3]);
-        LocalTrainingServer server = new LocalTrainingServer(true, replaySize, batchSize, learningRate, prioritizedReplay, dependencyGraph);
+        long iterationsToTrain = Long.parseLong(args[4]);
+        LocalTrainingServer server = new LocalTrainingServer(true, iterationsToTrain, replaySize, batchSize, learningRate, prioritizedReplay, dependencyGraph);
 
-        InputStream input = new FileInputStream(args[4]);
+        InputStream input = new FileInputStream(args[5]);
         Scanner kb = new Scanner(input);
         while(kb.hasNext()){
             String line = kb.nextLine();
@@ -563,7 +564,7 @@ public class LocalTrainingServer implements ITrainingServer{
                     if (metaData.targetRotation != 0 && this.iterations % metaData.targetRotation == 0) {
                         this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true));
 
-                        if(this.iterations + 1 >= LocalTrainingServer.iterationsToTrain){
+                        if(this.iterations + 1 >= this.iterationsToTrain){
                             this.run = false;
                         }
                     }
@@ -710,7 +711,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
     @Override
     public double getProb() {
-        double prob = (double) this.iterations / (double) LocalTrainingServer.iterationsToTrain * .9;
+        double prob = (double) this.iterations / (double) this.iterationsToTrain * .9;
         return prob;
     }
 
