@@ -470,6 +470,26 @@ public class LocalTrainingServer implements ITrainingServer{
                     if(this.prioritizedReplay) {
 
                         INDArray[] inputLabels = graph.output(dataSet.getFeatures());
+                        INDArray[] qLabels = dataSet.getLabels();
+                        INDArray[] dataMasks = cumulativeData.getMasks();
+                        INDArray[] squaredError = new INDArray[dataSet.getLabels().length];
+                        INDArray absTotalError = Nd4j.zeros(w.shape());
+
+                        for (int i = 0; i < squaredError.length; i++) {
+                            INDArray error = qLabels[i].sub(inputLabels[i]).mul(dataMasks[i]);
+                            squaredError[i] = error.mul(error);
+                            absTotalError = absTotalError.add(abs(error));
+                        }
+
+                        double[] errors = absTotalError.toDoubleVector();
+                        synchronized (this.dataPoints) {
+                            for (int k = 0; k < batchPoints.length; k++) {
+                                this.dataPoints.add(errors[k], batchPoints[k]);
+                            }
+                        }
+
+                        /*
+                        INDArray[] inputLabels = graph.output(dataSet.getFeatures());
                         INDArray[] error = new INDArray[dataSet.getLabels().length];
                         INDArray absTotalError = Nd4j.zeros(w.shape());
                         INDArray[] qLabels = dataSet.getLabels();
@@ -500,6 +520,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                 this.dataPoints.add(errors[k], batchPoints[k]);
                             }
                         }
+                        */
 
 
                         INDArray params = graph.params().dup();
