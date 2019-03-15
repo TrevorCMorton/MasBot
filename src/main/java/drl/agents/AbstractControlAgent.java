@@ -30,18 +30,25 @@ public abstract class AbstractControlAgent implements IAgent{
             mergeInputs[i + dependencyInputNames.size()] = envInputNames.get(i);
         }
 
-        IActivation activation;
+        IActivation activation1;
+        IActivation activation2;
         if(buildOutputs){
-            activation = new ActivationReLU();
+            activation1 = new ActivationReLU();
+            activation2 = new ActivationReLU();
         }
         else{
-            activation = new WeightedActivationRelu();
+            activation1 = new WeightedActivationRelu();
+            activation2 = new WeightedActivationRelu();
         }
-        activations.add(activation);
+        activations.add(activation1);
+        activations.add(activation2);
 
         builder.addLayer(this.name + this.getControlName() + "1",
-                        new DenseLayer.Builder().nOut(512).activation(activation).build(),
-                        mergeInputs);
+                        new DenseLayer.Builder().nOut(1024).activation(activation1).build(),
+                        mergeInputs)
+                .addLayer(this.name + this.getControlName() + "2",
+                        new DenseLayer.Builder().nOut(512).activation(activation2).build(),
+                        this.name + this.getControlName() + "1");
 
         for(int i = 0; i < outputNames.size(); i++){
             String outputName = outputNames.get(i);
@@ -51,7 +58,7 @@ public abstract class AbstractControlAgent implements IAgent{
                 builder
                         .addLayer(outputName + "Internal",
                                 new DenseLayer.Builder().nOut(1).weightInit(WeightInit.XAVIER).activation(Activation.IDENTITY).build(),
-                                this.name + this.getControlName() + "1")
+                                this.name + this.getControlName() + "2")
                         .addLayer(outputName,
                             new LossLayer.Builder().lossFunction(LossFunctions.LossFunction.L2).build(),
                             outputName + "Internal");
@@ -60,7 +67,7 @@ public abstract class AbstractControlAgent implements IAgent{
                 builder
                         .addLayer(outputName,
                                 new DenseLayer.Builder().nOut(1).weightInit(WeightInit.XAVIER).activation(Activation.IDENTITY).build(),
-                                this.name + this.getControlName() + "1");
+                                this.name + this.getControlName() + "2");
             }
         }
 
