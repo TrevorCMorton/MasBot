@@ -43,11 +43,9 @@ public abstract class AbstractControlAgent implements IAgent{
         activations.add(activation1);
         activations.add(activation2);
 
-        builder.addLayer(this.name + this.getControlName() + "1",
-                        new DenseLayer.Builder().nOut(1024).activation(activation1).build(),
-                        mergeInputs)
+        builder
                 .addLayer(this.name + this.getControlName() + "2",
-                        new DenseLayer.Builder().nOut(512).activation(activation2).build(),
+                        new DenseLayer.Builder().nOut(256).activation(activation2).build(),
                         this.name + this.getControlName() + "1");
 
         for(int i = 0; i < outputNames.size(); i++){
