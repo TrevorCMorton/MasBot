@@ -23,7 +23,7 @@ import org.nd4j.linalg.learning.config.*;
 import java.util.*;
 
 public class MetaDecisionAgent {
-    public static final int size = 160;
+    public static final int size = 84;
     public static final int depth = 1;
 
     private ComputationGraph metaGraph;
@@ -284,7 +284,7 @@ public class MetaDecisionAgent {
         this.activations.add(activation2);
         this.activations.add(activation3);
 
-        int convOutSize = ((((MetaDecisionAgent.size - 7) / 1 + 1) / 2 - 5) / 1 + 1) / 2;// - 2;
+        int convOutSize = ((((MetaDecisionAgent.size - 8) / 4 + 1) - 4) / 2 + 1);// - 2;
 
         builder
                 /*.addLayer("Screen1",
@@ -300,26 +300,14 @@ public class MetaDecisionAgent {
                     new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize, convOutSize, 64)),
                     "Screen3");*/
                 .addLayer("Screen1",
-                        new ConvolutionLayer.Builder(7, 7).nIn(MetaDecisionAgent.depth).stride(1, 1).nOut(32).weightInit(WeightInit.XAVIER).activation(activation1).build(),
+                        new ConvolutionLayer.Builder(8, 8).nIn(MetaDecisionAgent.depth).stride(4, 4).nOut(32).weightInit(WeightInit.XAVIER).activation(activation1).build(),
                         "Screen")
-                .addLayer("Screen1Max",
-                        new SubsamplingLayer.Builder(SubsamplingLayer.PoolingType.MAX)
-                        .kernelSize(2,2)
-                        .stride(2,2)
-                        .build(),
-                        "Screen1")
                 .addLayer("Screen2",
-                        new ConvolutionLayer.Builder(5, 5).stride(1, 1).nOut(32).weightInit(WeightInit.XAVIER).activation(activation2).build(),
-                        "Screen1Max")
-                .addLayer("Screen2Max",
-                        new SubsamplingLayer.Builder(SubsamplingLayer.PoolingType.MAX)
-                                .kernelSize(2,2)
-                                .stride(2,2)
-                                .build(),
-                        "Screen2")
+                        new ConvolutionLayer.Builder(4, 4).stride(2, 2).nOut(64).weightInit(WeightInit.XAVIER).activation(activation2).build(),
+                        "Screen1")
                 .addVertex("Screen2Flat",
-                        new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize, convOutSize, 32)),
-                        "Screen2Max");
+                        new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize, convOutSize, 64)),
+                        "Screen2");
 
         List<String> inputNames = new ArrayList<>();
         inputNames.add("Screen2Flat");
