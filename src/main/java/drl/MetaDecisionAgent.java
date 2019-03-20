@@ -264,7 +264,10 @@ public class MetaDecisionAgent {
     }
 
     private List<String> buildEnvironmentInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
-        this.addInput(builder, "Screen", InputType.convolutionalFlat(MetaDecisionAgent.size, MetaDecisionAgent.size, MetaDecisionAgent.depth));
+        this.addInput(builder, "Screen", InputType.feedForward(15 * 4));
+        List<String> inputNames = new ArrayList<>();
+        inputNames.add("Screen");
+        /*this.addInput(builder, "Screen", InputType.convolutionalFlat(MetaDecisionAgent.size, MetaDecisionAgent.size, MetaDecisionAgent.depth));
 
         IActivation activation1;
         IActivation activation2;
@@ -287,7 +290,7 @@ public class MetaDecisionAgent {
         int convOutSize = ((((MetaDecisionAgent.size - 8) / 4 + 1) - 4) / 2 + 1);// - 2;
 
         builder
-                /*.addLayer("Screen1",
+                .addLayer("Screen1",
                         new ConvolutionLayer.Builder(8, 8).nIn(MetaDecisionAgent.depth).stride(4, 4).nOut(32).weightInit(WeightInit.XAVIER).activation(activation1).build(),
                         "Screen")
                 .addLayer("Screen2",
@@ -298,19 +301,10 @@ public class MetaDecisionAgent {
                         "Screen2")
                 .addVertex("Screen3Flat",
                     new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize, convOutSize, 64)),
-                    "Screen3");*/
-                .addLayer("Screen1",
-                        new ConvolutionLayer.Builder(8, 8).nIn(MetaDecisionAgent.depth).stride(4, 4).nOut(32).weightInit(WeightInit.XAVIER).activation(activation1).build(),
-                        "Screen")
-                .addLayer("Screen2",
-                        new ConvolutionLayer.Builder(4, 4).stride(2, 2).nOut(64).weightInit(WeightInit.XAVIER).activation(activation2).build(),
-                        "Screen1")
-                .addVertex("Screen2Flat",
-                        new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize, convOutSize, 64)),
-                        "Screen2");
+                    "Screen3");
 
         List<String> inputNames = new ArrayList<>();
-        inputNames.add("Screen2Flat");
+        inputNames.add("Screen3Flat");*/
 
         return inputNames;
     }

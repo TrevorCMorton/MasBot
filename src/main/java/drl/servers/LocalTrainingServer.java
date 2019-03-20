@@ -232,7 +232,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                             INDArray[] endLabels = (INDArray[]) input.readObject();
 
                                             if (server.dataPoints.size() % 10000 == 100) {
-                                                server.writeStateToImage(startState, "start");
+                                                //server.writeStateToImage(startState, "start");
                                             }
 
                                             server.addData(startState, endState, masks, score, startLabels, endLabels);
