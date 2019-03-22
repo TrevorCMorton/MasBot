@@ -264,7 +264,7 @@ public class MetaDecisionAgent {
     }
 
     private List<String> buildEnvironmentInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
-        this.addInput(builder, "Screen", InputType.feedForward(13 * 4));
+        this.addInput(builder, "Screen", InputType.feedForward(13 * 2));
         List<String> inputNames = new ArrayList<>();
         inputNames.add("Screen");
         /*this.addInput(builder, "Screen", InputType.convolutionalFlat(MetaDecisionAgent.size, MetaDecisionAgent.size, MetaDecisionAgent.depth));
