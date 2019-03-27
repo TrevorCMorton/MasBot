@@ -24,7 +24,7 @@ import java.util.*;
 
 public class MetaDecisionAgent {
     public static final int size = 168;
-    public static final int depth = 1;
+    public static final int depth = 4;
 
     private ComputationGraph metaGraph;
     private AgentDependencyGraph dependencyGraph;
@@ -264,7 +264,7 @@ public class MetaDecisionAgent {
     }
 
     private List<String> buildEnvironmentInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
-        this.addInput(builder, "Screen", InputType.feedForward(13 * 2));
+        this.addInput(builder, "Screen", InputType.feedForward(MetaDecisionAgent.depth * 13 * 2));
         List<String> inputNames = new ArrayList<>();
         inputNames.add("Screen");
         /*this.addInput(builder, "Screen", InputType.convolutionalFlat(MetaDecisionAgent.size, MetaDecisionAgent.size, MetaDecisionAgent.depth));
