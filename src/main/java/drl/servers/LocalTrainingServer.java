@@ -117,7 +117,7 @@ public class LocalTrainingServer implements ITrainingServer{
         IAgent bbuttonAgent = new MeleeButtonAgent("B");
         IAgent cstickAgent = new MeleeJoystickAgent("C");
         IAgent abuttonAgent = new MeleeButtonAgent("A");
-        IAgent combination = new CombinationControlAgent(new String[][]{{"MR", "MN", "MNE", "ME", "MSE", "MS", "MSW", "MW", "MNW" },{"PB", "RB"}});
+        IAgent combination = new CombinationControlAgent(new String[][]{{"MR", "MN", "MNE", "ME", "MSE", "MS", "MSW", "MW", "MNW" },{"PA", "RA"}});
         //dependencyGraph.addAgent(null, bbuttonAgent, "B");
         //dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
         //dependencyGraph.addAgent(new String[]{"B"}, joystickAgent, "M");
