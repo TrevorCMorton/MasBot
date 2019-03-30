@@ -264,10 +264,12 @@ public class MetaDecisionAgent {
     }
 
     private List<String> buildEnvironmentInputs(ComputationGraphConfiguration.GraphBuilder builder, int numActions){
+        /*
         this.addInput(builder, "Screen", InputType.feedForward(MetaDecisionAgent.depth * 13 * 2 + 26));
         List<String> inputNames = new ArrayList<>();
         inputNames.add("Screen");
-        /*this.addInput(builder, "Screen", InputType.convolutionalFlat(MetaDecisionAgent.size, MetaDecisionAgent.size, MetaDecisionAgent.depth));
+        */
+        this.addInput(builder, "Screen", InputType.convolutionalFlat(MetaDecisionAgent.size, MetaDecisionAgent.size, MetaDecisionAgent.depth));
 
         IActivation activation1;
         IActivation activation2;
@@ -287,7 +289,7 @@ public class MetaDecisionAgent {
         this.activations.add(activation2);
         this.activations.add(activation3);
 
-        int convOutSize = ((((MetaDecisionAgent.size - 8) / 4 + 1) - 4) / 2 + 1);// - 2;
+        int convOutSize = ((((MetaDecisionAgent.size - 8) / 4 + 1) - 4) / 2 + 1) - 2;
 
         builder
                 .addLayer("Screen1",
@@ -304,7 +306,7 @@ public class MetaDecisionAgent {
                     "Screen3");
 
         List<String> inputNames = new ArrayList<>();
-        inputNames.add("Screen3Flat");*/
+        inputNames.add("Screen3Flat");
 
         return inputNames;
     }

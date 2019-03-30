@@ -44,11 +44,8 @@ public abstract class AbstractControlAgent implements IAgent{
         activations.add(activation2);
 
         builder.addLayer(this.name + this.getControlName() + "1",
-                        new DenseLayer.Builder().nOut(128).activation(activation1).build(),
-                        mergeInputs)
-                .addLayer(this.name + this.getControlName() + "2",
-                        new DenseLayer.Builder().nOut(128).activation(activation2).build(),
-                        this.name + this.getControlName() + "1");
+                        new DenseLayer.Builder().nOut(512).activation(activation1).build(),
+                        mergeInputs);
 
         for(int i = 0; i < outputNames.size(); i++){
             String outputName = outputNames.get(i);
@@ -58,7 +55,7 @@ public abstract class AbstractControlAgent implements IAgent{
                 builder
                         .addLayer(outputName + "Internal",
                                 new DenseLayer.Builder().nOut(1).weightInit(WeightInit.XAVIER).activation(Activation.IDENTITY).build(),
-                                this.name + this.getControlName() + "2")
+                                this.name + this.getControlName() + "1")
                         .addLayer(outputName,
                             new LossLayer.Builder().lossFunction(LossFunctions.LossFunction.L2).build(),
                             outputName + "Internal");
@@ -67,7 +64,7 @@ public abstract class AbstractControlAgent implements IAgent{
                 builder
                         .addLayer(outputName,
                                 new DenseLayer.Builder().nOut(1).weightInit(WeightInit.XAVIER).activation(Activation.IDENTITY).build(),
-                                this.name + this.getControlName() + "2");
+                                this.name + this.getControlName() + "1");
             }
         }
 
