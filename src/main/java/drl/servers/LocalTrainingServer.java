@@ -569,13 +569,13 @@ public class LocalTrainingServer implements ITrainingServer{
                         }
                     }
 
-                    if (iterations % 100 == 0) {
+                    if (iterations % 50 == 0) {
                         Nd4j.getMemoryManager().invokeGc();
                         System.out.println("Finished iteration " + this.iterations);
-                        System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / 100));
-                        System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / 100));
-                        System.out.println("Total build time: " + buildTime + " average was " + (buildTime / 100));
-                        System.out.println("Total fit time: " + fitTime + " average was " + (fitTime / 100));
+                        System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / 50));
+                        System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / 50));
+                        System.out.println("Total build time: " + buildTime + " average was " + (buildTime / 50));
+                        System.out.println("Total fit time: " + fitTime + " average was " + (fitTime / 50));
                         batchTime = 0;
                         concatTime = 0;
                         buildTime = 0;
