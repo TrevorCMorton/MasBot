@@ -289,9 +289,9 @@ public class MetaDecisionAgent {
         this.activations.add(activation2);
         this.activations.add(activation3);
 
-        int convOutSize = ((((MetaDecisionAgent.size - 16) / 8 + 1) - 4) / 2 + 1) - 2 +
-                    ((((MetaDecisionAgent.size - 8) / 4 + 1) - 4) / 2 + 1) - 2 +
-                    ((((MetaDecisionAgent.size - 6) / 3 + 1) - 4) / 2 + 1) - 2;
+        int convOutSize1 = ((((MetaDecisionAgent.size - 16) / 8 + 1) - 4) / 2 + 1) - 2;
+        int convOutSize2 = ((((MetaDecisionAgent.size - 8) / 4 + 1) - 4) / 2 + 1) - 2;
+        int convOutSize3 = ((((MetaDecisionAgent.size - 6) / 3 + 1) - 4) / 2 + 1) - 2;
 
         builder
                 .addLayer("Screen11",
@@ -304,7 +304,7 @@ public class MetaDecisionAgent {
                         new ConvolutionLayer.Builder(3, 3).stride(1, 1).nOut(64).weightInit(WeightInit.XAVIER).activation(activation3).build(),
                         "Screen21")
                 .addVertex("Screen31Flat",
-                        new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize, convOutSize, 64)),
+                        new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize1, convOutSize1, 64)),
                         "Screen31")
 
                 .addLayer("Screen12",
@@ -317,7 +317,7 @@ public class MetaDecisionAgent {
                         new ConvolutionLayer.Builder(3, 3).stride(1, 1).nOut(64).weightInit(WeightInit.XAVIER).activation(activation3).build(),
                         "Screen22")
                 .addVertex("Screen32Flat",
-                        new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize, convOutSize, 64)),
+                        new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize2, convOutSize2, 64)),
                         "Screen32")
 
 
@@ -331,7 +331,7 @@ public class MetaDecisionAgent {
                         new ConvolutionLayer.Builder(3, 3).stride(1, 1).nOut(64).weightInit(WeightInit.XAVIER).activation(activation3).build(),
                         "Screen23")
                 .addVertex("Screen33Flat",
-                        new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize, convOutSize, 64)),
+                        new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize3, convOutSize3, 64)),
                         "Screen33");
 
 
