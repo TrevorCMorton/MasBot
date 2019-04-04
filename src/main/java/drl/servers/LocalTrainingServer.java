@@ -251,8 +251,8 @@ public class LocalTrainingServer implements ITrainingServer{
                                             server.timeStorage.put(server.iterations, (double)gathered);
 
                                             synchronized (server) {
-                                                if (gathered > server.bestCount && modelBytes != null) {
-                                                    server.bestCount = gathered;
+                                                if (score > server.bestCount && modelBytes != null) {
+                                                    server.bestCount = score;
 
                                                     File f = new File(metadata.getName() + "-best.mod");
                                                     FileOutputStream fout = new FileOutputStream(f);
@@ -338,7 +338,7 @@ public class LocalTrainingServer implements ITrainingServer{
         while(this.run){
             System.out.print("");
 
-            boolean sufficientDataGathered = this.pointsGathered > this.dataPoints.getMaxSize();
+            boolean sufficientDataGathered = this.pointsGathered > this.dataPoints.getMaxSize() && this.pointWait > 0;
 
             if (!paused && sufficientDataGathered && iterations <= pointsGathered) {
                 long startTime = System.currentTimeMillis();
@@ -611,7 +611,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
     @Override
     public void addData(INDArray[] startState, INDArray endState, INDArray[] masks, float score, INDArray[] startLabels, INDArray[] endLabels) {
-        pointWait = 3;
+        pointWait = 5;
 
         INDArray[] labels = new INDArray[masks.length];
 
