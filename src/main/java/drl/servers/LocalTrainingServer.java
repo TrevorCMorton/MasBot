@@ -146,7 +146,7 @@ public class LocalTrainingServer implements ITrainingServer{
             dependencyGraph.resetNodes();
             System.out.println(agent.getMetaGraph().summary());
         }
-
+        server.setTargetGraph(server.grap);
         server.decisionAgent = new MetaDecisionAgent(dependencyGraph, server.activations, 1, learningRate, !prioritizedReplay);
         server.outputs = server.decisionAgent.getOutputNames();
 
@@ -588,6 +588,9 @@ public class LocalTrainingServer implements ITrainingServer{
                     f.delete();
                 }
 
+                File dir = new File("./models");
+                dir.mkdir();
+
                 FileOutputStream fout = new FileOutputStream(f);
                 fout.write(modelBytes);
 
@@ -628,7 +631,7 @@ public class LocalTrainingServer implements ITrainingServer{
     }
 
     protected String getModelName(){
-        return "models/" + this.iterations + ".mod";
+        return "./models/" + this.iterations + ".mod";
     }
 
     protected void setGraph(ComputationGraph graph){
