@@ -36,14 +36,15 @@ import static org.nd4j.linalg.ops.transforms.Transforms.abs;
 
 public class LocalTrainingServer implements ITrainingServer{
     public static final int port = 1612;
-    private int statsCounter;
+    private boolean stats;
     private HashMap<Integer, Double> statsStorage;
     private HashMap<Integer, Double> timeStorage;
     double bestCount = Double.MAX_VALUE * -1.0;
 
-    private HashMap<GraphMetadata, ComputationGraph> graphs;
+    private ComputationGraph grap;
     private MetaDecisionAgent decisionAgent;
-    private HashMap<GraphMetadata, ComputationGraph>  targetGraphs;
+    private ComputationGraph  targetGrap;
+    private GraphMetadata metadata;
     private AgentDependencyGraph dependencyGraph;
     private String[] outputs;
     private int inputSize;
@@ -73,7 +74,6 @@ public class LocalTrainingServer implements ITrainingServer{
 
         this.pointWait = 5;
 
-        this.statsCounter = 0;
         this.statsStorage = new HashMap<>();
         this.timeStorage = new HashMap<>();
 
@@ -93,8 +93,6 @@ public class LocalTrainingServer implements ITrainingServer{
         this.paused = false;
         this.threads = new HashMap<>();
 
-        this.graphs = new HashMap<>();
-        this.targetGraphs = new HashMap<>();
         this.inputSize = MetaDecisionAgent.size;
     }
 
@@ -102,16 +100,6 @@ public class LocalTrainingServer implements ITrainingServer{
         Nd4j.getMemoryManager().togglePeriodicGc(false);
         Nd4j.setDataType(DataBuffer.Type.FLOAT);
 
-        /*
-        HashMap<Long, Double> csvTest = new HashMap<>();
-
-        for(int i = 0; i < 100; i++){
-            double rand = (Math.random() * 100);
-            csvTest.put((long)i, rand);
-        }
-
-        writeHashMapToCsv("test.csv", csvTest);
-        */
         AgentDependencyGraph dependencyGraph = new AgentDependencyGraph();
         IAgent joystickAgent = new MeleeJoystickAgent("M");
         IAgent bbuttonAgent = new MeleeButtonAgent("B");
@@ -133,29 +121,30 @@ public class LocalTrainingServer implements ITrainingServer{
 
         InputStream input = new FileInputStream(args[5]);
         Scanner kb = new Scanner(input);
-        while(kb.hasNext()){
-            String line = kb.nextLine();
-            String[] params = line.split(" ");
+        String line = kb.nextLine();
+        String[] params = line.split(" ");
 
-            float decayRate = Float.parseFloat(params[0]);
-            int targetRotation = Integer.parseInt(params[1]);
+        float decayRate = Float.parseFloat(params[0]);
+        int targetRotation = Integer.parseInt(params[1]);
+        boolean stats = Boolean.parseBoolean(params[2]);
 
-            GraphMetadata metaData = new GraphMetadata(replaySize, batchSize, decayRate, targetRotation);
+        server.stats = stats;
 
-            File pretrained = new File(server.getModelName(metaData));
+        server.metadata = new GraphMetadata(replaySize, batchSize, decayRate, targetRotation);
 
-            if(!prioritizedReplay && pretrained.exists()){
-                System.out.println("Loading model from file");
-                ComputationGraph model = ModelSerializer.restoreComputationGraph(pretrained, true);
-                server.addGraph(metaData, model);
-                System.out.println(model.summary());
-            }
-            else{
-                MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, server.activations,0, learningRate, !prioritizedReplay);
-                server.addGraph(metaData, agent.getMetaGraph());
-                dependencyGraph.resetNodes();
-                System.out.println(agent.getMetaGraph().summary());
-            }
+        File pretrained = new File(server.getModelName());
+
+        if(!prioritizedReplay && pretrained.exists()){
+            System.out.println("Loading model from file");
+            ComputationGraph model = ModelSerializer.restoreComputationGraph(pretrained, true);
+            server.setGraph(model);
+            System.out.println(model.summary());
+        }
+        else{
+            MetaDecisionAgent agent = new MetaDecisionAgent(dependencyGraph, server.activations,0, learningRate, !prioritizedReplay);
+            server.setGraph(agent.getMetaGraph());
+            dependencyGraph.resetNodes();
+            System.out.println(agent.getMetaGraph().summary());
         }
 
         server.decisionAgent = new MetaDecisionAgent(dependencyGraph, server.activations, 1, learningRate, !prioritizedReplay);
@@ -247,14 +236,13 @@ public class LocalTrainingServer implements ITrainingServer{
                                         double score = (double) input.readObject();
                                         if(stats){
                                             server.addScore(score);
-                                            GraphMetadata metadata = server.targetGraphs.keySet().iterator().next();
                                             server.timeStorage.put(server.iterations, (double)gathered);
 
                                             synchronized (server) {
                                                 if (score > server.bestCount && modelBytes != null) {
                                                     server.bestCount = score;
 
-                                                    File f = new File(metadata.getName() + "-best.mod");
+                                                    File f = new File("models/best.mod");
                                                     FileOutputStream fout = new FileOutputStream(f);
                                                     fout.write(modelBytes);
                                                 }
@@ -262,13 +250,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                         }
                                         break;
                                     case ("getUpdatedNetwork"):
-                                        Iterator<GraphMetadata> iterator = server.graphs.keySet().iterator();
-                                        GraphMetadata randomData = iterator.next();
-                                        for (int i = 1; i < server.random.nextInt(server.graphs.size()); i++) {
-                                            randomData = iterator.next();
-                                        }
-
-                                        Path modelPath = Paths.get(server.getModelName(randomData));
+                                        Path modelPath = Paths.get(server.getModelName());
                                         modelBytes = Files.readAllBytes(modelPath);
                                         output.writeObject(modelBytes);
                                         break;
@@ -399,60 +381,45 @@ public class LocalTrainingServer implements ITrainingServer{
 
                 long concat = System.currentTimeMillis();
 
-                for (GraphMetadata metaData : this.graphs.keySet()) {
-                    long graphStart = System.currentTimeMillis();
+                long graphStart = System.currentTimeMillis();
 
-                    ComputationGraph graph = this.graphs.get(metaData);
-                    ComputationGraph targetGraph = this.targetGraphs.get(metaData);
+                this.decisionAgent.setMetaGraph(this.grap);
+                INDArray[] endState = this.decisionAgent.getState(cumulativeData.endState);
 
-                    this.decisionAgent.setMetaGraph(graph);
-                    INDArray[] endState = this.decisionAgent.getState(cumulativeData.endState);
+                INDArray[] curLabels = this.grap.output(endState);
+                INDArray[] targetLabels = this.targetGrap.output(endState);
 
-                    INDArray[] curLabels = graph.output(endState);
-                    INDArray[] targetLabels = targetGraph.output(endState);
+                INDArray[] targetMaxs = new INDArray[curLabels.length];
 
-                    INDArray[] targetMaxs = new INDArray[curLabels.length];
+                ArrayList<INDArray> maxs = new ArrayList<>();
 
-                    ArrayList<INDArray> maxs = new ArrayList<>();
+                for (ArrayList<Integer> inds : this.dependencyGraph.getAgentInds(this.outputs)) {
 
-                    for (ArrayList<Integer> inds : this.dependencyGraph.getAgentInds(this.outputs)) {
-                        /*
-                        int concatInd = 0;
-                        INDArray[] indLabels = new INDArray[inds.size()];
-                        for (int i : inds) {
-                            indLabels[concatInd] = targetLabels[i];
-                            concatInd++;
-                        }
-                        INDArray max = Nd4j.concat(1, indLabels);
-                        max = Nd4j.max(max, 1);
-                        maxs.add(max);
-                        */
-
-                        int concatInd = 0;
-                        INDArray[] curIndLabels = new INDArray[inds.size()];
-                        for (int i : inds) {
-                            curIndLabels[concatInd] = curLabels[i];
-                            concatInd++;
-                        }
-                        INDArray max = Nd4j.concat(1, curIndLabels);
-                        max = Nd4j.max(max, 1);
-
-                        INDArray[] maxBools = new INDArray[curLabels.length];
-                        for (int i : inds) {
-                            maxBools[i] = curLabels[i].eq(max);
-                        }
-
-                        INDArray targetMax = Nd4j.zeros(targetLabels[0].shape());
-                        for (int i : inds) {
-                            targetMax = targetMax.add(maxBools[i].mul(targetLabels[i]));
-                        }
-                        //maxs.add(targetMax);
-
-                        for (int i : inds) {
-                            targetMaxs[i] = targetMax;
-                        }
-
+                    int concatInd = 0;
+                    INDArray[] curIndLabels = new INDArray[inds.size()];
+                    for (int i : inds) {
+                        curIndLabels[concatInd] = curLabels[i];
+                        concatInd++;
                     }
+                    INDArray max = Nd4j.concat(1, curIndLabels);
+                    max = Nd4j.max(max, 1);
+
+                    INDArray[] maxBools = new INDArray[curLabels.length];
+                    for (int i : inds) {
+                        maxBools[i] = curLabels[i].eq(max);
+                    }
+
+                    INDArray targetMax = Nd4j.zeros(targetLabels[0].shape());
+                    for (int i : inds) {
+                        targetMax = targetMax.add(maxBools[i].mul(targetLabels[i]));
+                    }
+                    //maxs.add(targetMax);
+
+                    for (int i : inds) {
+                        targetMaxs[i] = targetMax;
+                    }
+
+                }
                     /*
                     INDArray maxSum = Nd4j.zeros(maxs.get(0).shape());
                     for(int i = 0; i < maxs.size(); i++){
@@ -464,123 +431,73 @@ public class LocalTrainingServer implements ITrainingServer{
                         targetMaxs[i] = maxSum;
                     }
                     */
-                    MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(targetMaxs, metaData.decayRate);
+                MultiDataSet dataSet = cumulativeData.getDataSetWithQOffset(targetMaxs, this.metadata.decayRate);
 
-                    long graphBuild = System.currentTimeMillis();
+                long graphBuild = System.currentTimeMillis();
 
-                    if(this.prioritizedReplay) {
+                if(this.prioritizedReplay) {
 
-                        INDArray[] inputLabels = graph.output(dataSet.getFeatures());
-                        INDArray[] qLabels = dataSet.getLabels();
-                        INDArray[] dataMasks = cumulativeData.getMasks();
-                        INDArray[] squaredError = new INDArray[dataSet.getLabels().length];
-                        INDArray absTotalError = Nd4j.zeros(w.shape());
+                    INDArray[] inputLabels = this.grap.output(dataSet.getFeatures());
+                    INDArray[] qLabels = dataSet.getLabels();
+                    INDArray[] dataMasks = cumulativeData.getMasks();
+                    INDArray[] squaredError = new INDArray[dataSet.getLabels().length];
+                    INDArray absTotalError = Nd4j.zeros(w.shape());
 
-                        for (int i = 0; i < squaredError.length; i++) {
-                            INDArray error = qLabels[i].sub(inputLabels[i]).mul(dataMasks[i]);
-                            squaredError[i] = error.mul(error);
-                            absTotalError = absTotalError.add(abs(error));
-                        }
-
-                        double[] errors = absTotalError.toDoubleVector();
-                        synchronized (this.dataPoints) {
-                            for (int k = 0; k < batchPoints.length; k++) {
-                                this.dataPoints.add(errors[k], batchPoints[k]);
-                            }
-                        }
-
-                        /*
-                        INDArray[] inputLabels = graph.output(dataSet.getFeatures());
-                        INDArray[] error = new INDArray[dataSet.getLabels().length];
-                        INDArray absTotalError = Nd4j.zeros(w.shape());
-                        INDArray[] qLabels = dataSet.getLabels();
-                        INDArray[] dataMasks = cumulativeData.getMasks();
-
-                        for (int i = 0; i < error.length; i++) {
-                            error[i] = qLabels[i].sub(inputLabels[i]);
-                            absTotalError = absTotalError.add(abs(error[i].mul(dataMasks[i])));
-                        }
-
-                        INDArray[] weightedLabels = new INDArray[dataSet.getLabels().length];
-                        INDArray[] weightedErrors = new INDArray[dataSet.getLabels().length];
-                        INDArray[] epsilons = new INDArray[dataSet.getLabels().length];
-                        INDArray[] squaredError = new INDArray[dataSet.getLabels().length];
-
-                        for (int i = 0; i < weightedLabels.length; i++) {
-                            weightedLabels[i] = inputLabels[i].add(error[i].mul(w));
-                            epsilons[i] = error[i].mul(dataMasks[i]);
-                            weightedErrors[i] = epsilons[i].mul(w);
-                            squaredError[i] = epsilons[i].mul(epsilons[i]);
-                        }
-
-                        dataSet.setLabels(weightedLabels);
-
-                        double[] errors = absTotalError.toDoubleVector();
-                        synchronized (this.dataPoints) {
-                            for (int k = 0; k < batchPoints.length; k++) {
-                                this.dataPoints.add(errors[k], batchPoints[k]);
-                            }
-                        }
-                        */
-
-
-                        INDArray params = graph.params().dup();
-                        /*
-                        INDArray cumGrad = Nd4j.zeros(params.shape());
-
-                        for (int ind = 0; ind < this.batchSize; ind++) {
-                            INDArray[] featureSlice = this.getArraySlices(dataSet.getFeatures(), ind);
-                            INDArray[] labelSlice = this.getArraySlices(squaredError, ind);
-                            graph.feedForward(featureSlice, true, false);
-                            Gradient grad = graph.backpropGradient(labelSlice);
-                            graph.getUpdater().update(grad, iterations, 0, this.batchSize, LayerWorkspaceMgr.noWorkspaces());
-                            cumGrad.addi(grad.gradient().mul(wArray[ind]));
-                        }
-
-                        INDArray updatedParams = params.sub(cumGrad);
-                        graph.setParams(updatedParams);
-                        */
-                        for(IActivation activation : this.activations){
-                            ((WeightedActivationRelu)activation).setWeight(w);
-                        }
-
-                        graph.feedForward(dataSet.getFeatures(), true, false);
-                        Gradient grad = graph.backpropGradient(squaredError);
-                        graph.getUpdater().update(grad, iterations, 0, this.batchSize, LayerWorkspaceMgr.noWorkspaces());
-                        INDArray newParams = params.sub(grad.gradient());
-                        graph.setParams(newParams);
-
+                    for (int i = 0; i < squaredError.length; i++) {
+                        INDArray error = qLabels[i].sub(inputLabels[i]).mul(dataMasks[i]);
+                        squaredError[i] = error.mul(error);
+                        absTotalError = absTotalError.add(abs(error));
                     }
-                    else {
-                        graph.fit(dataSet);
-                    }
-                    long graphFit = System.currentTimeMillis();
 
-                    batchTime += batch - startTime;
-                    concatTime += concat - batch;
-                    buildTime += graphBuild - graphStart;
-                    fitTime += graphFit - graphBuild;
-
-                    if (metaData.targetRotation != 0 && this.iterations % metaData.targetRotation == 0) {
-                        this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, true));
-
-                        if(this.iterations + 1 >= this.iterationsToTrain){
-                            this.run = false;
+                    double[] errors = absTotalError.toDoubleVector();
+                    synchronized (this.dataPoints) {
+                        for (int k = 0; k < batchPoints.length; k++) {
+                            this.dataPoints.add(errors[k], batchPoints[k]);
                         }
                     }
 
-                    if (iterations % 50 == 0) {
-                        Nd4j.getMemoryManager().invokeGc();
-                        System.out.println("Finished iteration " + this.iterations);
-                        System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / 50));
-                        System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / 50));
-                        System.out.println("Total build time: " + buildTime + " average was " + (buildTime / 50));
-                        System.out.println("Total fit time: " + fitTime + " average was " + (fitTime / 50));
-                        batchTime = 0;
-                        concatTime = 0;
-                        buildTime = 0;
-                        fitTime = 0;
+                    INDArray params = this.grap.params().dup();
+
+                    for(IActivation activation : this.activations){
+                        ((WeightedActivationRelu)activation).setWeight(w);
                     }
+
+                    this.grap.feedForward(dataSet.getFeatures(), true, false);
+                    Gradient grad = this.grap.backpropGradient(squaredError);
+                    this.grap.getUpdater().update(grad, iterations, 0, this.batchSize, LayerWorkspaceMgr.noWorkspaces());
+                    INDArray newParams = params.sub(grad.gradient());
+                    this.grap.setParams(newParams);
+
+                }
+                else {
+                    this.grap.fit(dataSet);
+                }
+                long graphFit = System.currentTimeMillis();
+
+                batchTime += batch - startTime;
+                concatTime += concat - batch;
+                buildTime += graphBuild - graphStart;
+                fitTime += graphFit - graphBuild;
+
+                if (this.metadata.targetRotation != 0 && this.iterations % this.metadata.targetRotation == 0) {
+                    this.setTargetGraph(this.grap);
+
+                    if(this.iterations + 1 >= this.iterationsToTrain){
+                        this.run = false;
+                    }
+                }
+
+                if (iterations % 50 == 0) {
+                    Nd4j.getMemoryManager().invokeGc();
+                    System.out.println("Finished iteration " + this.iterations);
+                    System.out.println("Total batch time: " + batchTime + " average was " + (batchTime / 50));
+                    System.out.println("Total concat time: " + concatTime + " average was " + (concatTime / 50));
+                    System.out.println("Total build time: " + buildTime + " average was " + (buildTime / 50));
+                    System.out.println("Total fit time: " + fitTime + " average was " + (fitTime / 50));
+                    batchTime = 0;
+                    concatTime = 0;
+                    buildTime = 0;
+                    fitTime = 0;
                 }
 
                 iterations++;
@@ -648,17 +565,12 @@ public class LocalTrainingServer implements ITrainingServer{
 
     @Override
     public ComputationGraph getUpdatedNetwork() {
-        Iterator<GraphMetadata> iterator = graphs.keySet().iterator();
-        GraphMetadata randomData = iterator.next();
-        for(int i = 1; i < this.random.nextInt(graphs.size()); i++){
-            randomData = iterator.next();
-        }
-        return this.getUpdatedNetwork(randomData, !this.connectFromNetwork);
+        return this.getUpdatedNetwork(!this.connectFromNetwork);
     }
 
-    private ComputationGraph getUpdatedNetwork(GraphMetadata metaData, boolean clone) {
+    private ComputationGraph getUpdatedNetwork(boolean clone) {
         try{
-            ComputationGraph graph = this.graphs.get(metaData);
+            ComputationGraph graph = this.grap;
 
 
             if(!clone){
@@ -670,7 +582,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
                 byte[] modelBytes = baos.toByteArray();
 
-                File f = new File(this.getModelName(metaData));
+                File f = new File(this.getModelName());
 
                 if (f.exists()) {
                     f.delete();
@@ -715,37 +627,22 @@ public class LocalTrainingServer implements ITrainingServer{
         return prob;
     }
 
-    protected String getModelName(GraphMetadata metaData){
-        StringBuilder sb = new StringBuilder();
-        sb.append("model-");
-        //for(String output : this.agent.getOutputNames()){
-        //    sb.append(output);
-        //    sb.append("-");
-        //}
-        sb.append(metaData.getName());
-        sb.append(".mod");
-        return sb.toString();
+    protected String getModelName(){
+        int iters = this.targetGrap.getIterationCount();
+        return "models/" + iters + ".mod";
     }
 
-    protected void addGraph(GraphMetadata metaData, ComputationGraph graph){
-        this.graphs.put(metaData, graph);
-        this.targetGraphs.put(metaData, this.getUpdatedNetwork(metaData, metaData.targetRotation != 0));
+    protected void setGraph(ComputationGraph graph){
+        this.grap = graph;
+        this.grap.setListeners(new PerformanceListener(100, true));
+    }
 
-        int listenerFrequency = 1;
-        boolean reportScore = true;
-        boolean reportGC = true;
-        this.graphs.get(metaData).setListeners(new PerformanceListener(100, reportScore));
+    protected void setTargetGraph(ComputationGraph graph){
+        this.targetGrap = this.getUpdatedNetwork(true);
     }
 
     private synchronized boolean isStatsRunner(){
-        if (this.statsCounter <= 0) {
-            this.statsCounter = 5;
-            return true;
-        }
-        else{
-            this.statsCounter--;
-            return false;
-        }
+        return this.stats;
     }
 
     private void writeHashMapToCsv(String fileName, HashMap<Integer, Double> dataMap ) throws Exception {
