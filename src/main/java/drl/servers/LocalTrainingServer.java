@@ -63,6 +63,7 @@ public class LocalTrainingServer implements ITrainingServer{
     private int pointWait;
     private boolean run;
     private boolean paused;
+    private String latestFile;
 
     private HashMap<Long, Thread> threads;
 
@@ -250,7 +251,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                         }
                                         break;
                                     case ("getUpdatedNetwork"):
-                                        Path modelPath = Paths.get(server.getModelName());
+                                        Path modelPath = Paths.get(server.latestFile);
                                         modelBytes = Files.readAllBytes(modelPath);
                                         output.writeObject(modelBytes);
                                         break;
@@ -582,7 +583,8 @@ public class LocalTrainingServer implements ITrainingServer{
 
                 byte[] modelBytes = baos.toByteArray();
 
-                File f = new File(this.getModelName());
+                String fileName = this.getModelName();
+                File f = new File(fileName);
 
                 if (f.exists()) {
                     f.delete();
@@ -593,6 +595,8 @@ public class LocalTrainingServer implements ITrainingServer{
 
                 FileOutputStream fout = new FileOutputStream(f);
                 fout.write(modelBytes);
+
+                this.latestFile = fileName;
 
                 ByteArrayInputStream bais = new ByteArrayInputStream(modelBytes);
                 return ModelSerializer.restoreComputationGraph(bais, true);
