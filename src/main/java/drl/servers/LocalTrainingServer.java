@@ -628,8 +628,7 @@ public class LocalTrainingServer implements ITrainingServer{
     }
 
     protected String getModelName(){
-        int iters = this.targetGrap.getIterationCount();
-        return "models/" + iters + ".mod";
+        return "models/" + this.iterations + ".mod";
     }
 
     protected void setGraph(ComputationGraph graph){
