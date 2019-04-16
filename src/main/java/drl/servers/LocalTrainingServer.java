@@ -216,7 +216,6 @@ public class LocalTrainingServer implements ITrainingServer{
                                 String message = (String) input.readObject();
                                 switch (message) {
                                     case ("addData"):
-                                        if(!stats) {
                                             try {
                                                 INDArray[] startState = (INDArray[]) input.readObject();
                                                 INDArray endState = (INDArray) input.readObject();
@@ -229,14 +228,15 @@ public class LocalTrainingServer implements ITrainingServer{
                                                     //server.writeStateToImage(startState, "start");
                                                 }
 
-                                                server.addData(startState, endState, masks, score, startLabels, endLabels);
+                                                if(!stats) {
+                                                    server.addData(startState, endState, masks, score, startLabels, endLabels);
+                                                }
                                                 gathered++;
                                             } catch (Exception e) {
                                                 System.out.println("Error while attempting to upload a data point, point destroyed");
                                                 System.out.println(e);
                                                 e.printStackTrace();
                                             }
-                                        }
                                         break;
                                     case ("addScore"):
                                         double score = (double) input.readObject();
