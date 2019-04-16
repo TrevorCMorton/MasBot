@@ -81,7 +81,7 @@ public class LocalTrainingServer implements ITrainingServer{
         this.statsStorage = new HashMap<>();
         this.timeStorage = new HashMap<>();
         this.gathered = new HashMap<>();
-        
+
         this.prioritizedReplay = prioritizedReplay;
         this.activations = new ArrayList<>();
         if(this.prioritizedReplay){
@@ -204,6 +204,7 @@ public class LocalTrainingServer implements ITrainingServer{
                     try {
                         boolean stats = server.isStatsRunner();
                         int iterations = server.iterations;
+                        int next = iterations + server.metadata.targetRotation;
                         byte[] modelBytes = null;
                         int pointsGathered = 0;
                         socket.setSoTimeout(600000);
@@ -266,7 +267,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                             server.gathered.put(iterations, server.gathered.get(iterations) + 1);
 
                                             if(server.gathered.get(iterations) >= server.evalIters){
-                                                server.iterations += server.metadata.targetRotation;
+                                                server.iterations = next;
                                             }
                                         }
                                         break;
@@ -695,7 +696,7 @@ public class LocalTrainingServer implements ITrainingServer{
         String csvHeader = "iterations," + fileName + "\n";
         fout.write(csvHeader.getBytes());
         for(int key : dataMap.keySet()){
-            String csvLine = key + "," + (dataMap.get(key) / (double)this.evalIters) + "\n";
+            String csvLine = key + "," + (dataMap.get(key) / (double)this.gathered.get(key)) + "\n";
             fout.write(csvLine.getBytes());
         }
         fout.close();
