@@ -39,6 +39,7 @@ public class LocalTrainingServer implements ITrainingServer{
     private boolean stats;
     private HashMap<Integer, Double> statsStorage;
     private HashMap<Integer, Double> timeStorage;
+    private HashMap<Integer, Integer> gathered;
     double bestCount = Double.MAX_VALUE * -1.0;
 
     private ComputationGraph grap;
@@ -167,7 +168,6 @@ public class LocalTrainingServer implements ITrainingServer{
 
         System.out.println("Accepting Clients");
         ServerSocket ss = new ServerSocket(LocalTrainingServer.port);
-        int gathered = 0;
         while(server.run) {
             synchronized (server.threads) {
                 LinkedList<Long> badThreads = new LinkedList<>();
@@ -202,8 +202,9 @@ public class LocalTrainingServer implements ITrainingServer{
                 public void run() {
                     try {
                         boolean stats = server.isStatsRunner();
+                        int iterations = server.iterations;
                         byte[] modelBytes = null;
-                        int gathered = 0;
+                        int pointsGathered = 0;
                         socket.setSoTimeout(600000);
                         System.out.println("Client connected on port " + port);
 
@@ -231,7 +232,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                                 if(!stats) {
                                                     server.addData(startState, endState, masks, score, startLabels, endLabels);
                                                 }
-                                                gathered++;
+                                                pointsGathered++;
                                             } catch (Exception e) {
                                                 System.out.println("Error while attempting to upload a data point, point destroyed");
                                                 System.out.println(e);
@@ -242,10 +243,10 @@ public class LocalTrainingServer implements ITrainingServer{
                                         double score = (double) input.readObject();
                                         if(stats){
                                             server.addScore(score);
-                                            if(server.timeStorage.containsKey(server.iterations)){
-                                                gathered += server.timeStorage.get(server.iterations);
+                                            if(server.timeStorage.containsKey(iterations)){
+                                                pointsGathered += server.timeStorage.get(iterations);
                                             }
-                                            server.timeStorage.put(server.iterations, (double)gathered);
+                                            server.timeStorage.put(iterations, (double)pointsGathered);
 
                                             synchronized (server) {
                                                 if (score > server.bestCount && modelBytes != null) {
@@ -257,10 +258,13 @@ public class LocalTrainingServer implements ITrainingServer{
                                                 }
                                             }
 
-                                            gathered++;
+                                            if(!server.gathered.containsKey(iterations)){
+                                                server.gathered.put(iterations, 0);
+                                            }
 
-                                            if(gathered >= server.evalIters){
-                                                gathered = 0;
+                                            server.gathered.put(iterations, server.gathered.get(iterations) + 1);
+
+                                            if(server.gathered.get(iterations) >= server.evalIters){
                                                 server.iterations += server.metadata.targetRotation;
                                             }
                                         }
