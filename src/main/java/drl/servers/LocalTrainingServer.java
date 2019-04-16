@@ -216,24 +216,26 @@ public class LocalTrainingServer implements ITrainingServer{
                                 String message = (String) input.readObject();
                                 switch (message) {
                                     case ("addData"):
-                                        try {
-                                            INDArray[] startState = (INDArray[]) input.readObject();
-                                            INDArray endState = (INDArray) input.readObject();
-                                            INDArray[] masks = (INDArray[]) input.readObject();
-                                            float score = (float) input.readObject();
-                                            INDArray[] startLabels = (INDArray[]) input.readObject();
-                                            INDArray[] endLabels = (INDArray[]) input.readObject();
+                                        if(!stats) {
+                                            try {
+                                                INDArray[] startState = (INDArray[]) input.readObject();
+                                                INDArray endState = (INDArray) input.readObject();
+                                                INDArray[] masks = (INDArray[]) input.readObject();
+                                                float score = (float) input.readObject();
+                                                INDArray[] startLabels = (INDArray[]) input.readObject();
+                                                INDArray[] endLabels = (INDArray[]) input.readObject();
 
-                                            if (server.dataPoints.size() % 10000 == 100) {
-                                                //server.writeStateToImage(startState, "start");
+                                                if (server.dataPoints.size() % 10000 == 100) {
+                                                    //server.writeStateToImage(startState, "start");
+                                                }
+
+                                                server.addData(startState, endState, masks, score, startLabels, endLabels);
+                                                gathered++;
+                                            } catch (Exception e) {
+                                                System.out.println("Error while attempting to upload a data point, point destroyed");
+                                                System.out.println(e);
+                                                e.printStackTrace();
                                             }
-
-                                            server.addData(startState, endState, masks, score, startLabels, endLabels);
-                                            gathered++;
-                                        } catch (Exception e) {
-                                            System.out.println("Error while attempting to upload a data point, point destroyed");
-                                            System.out.println(e);
-                                            e.printStackTrace();
                                         }
                                         break;
                                     case ("addScore"):
@@ -264,15 +266,24 @@ public class LocalTrainingServer implements ITrainingServer{
                                         }
                                         break;
                                     case ("getUpdatedNetwork"):
-                                        Path modelPath;
-                                        if(stats){
-                                            modelPath = Paths.get(server.getModelName());
+                                        try{
+                                            Path modelPath;
+                                            if(stats){
+                                                modelPath = Paths.get(server.getModelName());
+                                                System.out.println("Sending network" + server.getModelName());
+
+                                            }
+                                            else {
+                                                modelPath = Paths.get(server.latestFile);
+                                            }
+                                            modelBytes = Files.readAllBytes(modelPath);
+                                            output.writeObject(modelBytes);
                                         }
-                                        else {
-                                            modelPath = Paths.get(server.latestFile);
+                                        catch (FileNotFoundException f){
+                                            System.out.println("Finishing evaluation");
+                                            server.run = false;
+                                            return;
                                         }
-                                        modelBytes = Files.readAllBytes(modelPath);
-                                        output.writeObject(modelBytes);
                                         break;
                                     case ("getDependencyGraph"):
                                         output.writeObject(server.getDependencyGraph());
@@ -337,7 +348,7 @@ public class LocalTrainingServer implements ITrainingServer{
         }
         this.dataPoints.prepopulate(new DataPoint(randInput, Nd4j.rand(new int[]{1, MetaDecisionAgent.depth, MetaDecisionAgent.size, MetaDecisionAgent.size}), blankLabels, blankLabels));
         */
-        while(this.run || this.iterations >= this.iterationsToTrain && this.stats){
+        while(this.run || this.iterations < this.iterationsToTrain && this.stats){
             System.out.print("");
 
             boolean sufficientDataGathered = this.pointsGathered > this.dataPoints.getMaxSize() && this.pointWait > 0;
