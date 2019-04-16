@@ -80,7 +80,8 @@ public class LocalTrainingServer implements ITrainingServer{
 
         this.statsStorage = new HashMap<>();
         this.timeStorage = new HashMap<>();
-
+        this.gathered = new HashMap<>();
+        
         this.prioritizedReplay = prioritizedReplay;
         this.activations = new ArrayList<>();
         if(this.prioritizedReplay){
