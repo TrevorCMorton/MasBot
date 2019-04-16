@@ -264,7 +264,13 @@ public class LocalTrainingServer implements ITrainingServer{
                                         }
                                         break;
                                     case ("getUpdatedNetwork"):
-                                        Path modelPath = Paths.get(server.latestFile);
+                                        Path modelPath;
+                                        if(stats){
+                                            modelPath = Paths.get(server.getModelName());
+                                        }
+                                        else {
+                                            modelPath = Paths.get(server.latestFile);
+                                        }
                                         modelBytes = Files.readAllBytes(modelPath);
                                         output.writeObject(modelBytes);
                                         break;
@@ -331,7 +337,7 @@ public class LocalTrainingServer implements ITrainingServer{
         }
         this.dataPoints.prepopulate(new DataPoint(randInput, Nd4j.rand(new int[]{1, MetaDecisionAgent.depth, MetaDecisionAgent.size, MetaDecisionAgent.size}), blankLabels, blankLabels));
         */
-        while(this.run){
+        while(this.run || this.iterations >= this.iterationsToTrain && this.stats){
             System.out.print("");
 
             boolean sufficientDataGathered = this.pointsGathered > this.dataPoints.getMaxSize() && this.pointWait > 0;
@@ -673,7 +679,7 @@ public class LocalTrainingServer implements ITrainingServer{
         String csvHeader = "iterations," + fileName + "\n";
         fout.write(csvHeader.getBytes());
         for(int key : dataMap.keySet()){
-            String csvLine = key + "," + dataMap.get(key) + "\n";
+            String csvLine = key + "," + (dataMap.get(key) / (double)this.evalIters) + "\n";
             fout.write(csvLine.getBytes());
         }
         fout.close();
