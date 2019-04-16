@@ -67,6 +67,8 @@ public class LocalTrainingServer implements ITrainingServer{
 
     private HashMap<Long, Thread> threads;
 
+    private int evalIters = 10;
+
     public LocalTrainingServer(boolean connectFromNetwork, long iterationsToTrain, int maxReplaySize, int batchSize, double learningRate, boolean prioritizedReplay, AgentDependencyGraph dependencyGraph){
         this.iterationsToTrain = iterationsToTrain;
         this.batchSize = batchSize;
@@ -165,6 +167,7 @@ public class LocalTrainingServer implements ITrainingServer{
 
         System.out.println("Accepting Clients");
         ServerSocket ss = new ServerSocket(LocalTrainingServer.port);
+        int gathered = 0;
         while(server.run) {
             synchronized (server.threads) {
                 LinkedList<Long> badThreads = new LinkedList<>();
@@ -237,6 +240,9 @@ public class LocalTrainingServer implements ITrainingServer{
                                         double score = (double) input.readObject();
                                         if(stats){
                                             server.addScore(score);
+                                            if(server.timeStorage.containsKey(server.iterations)){
+                                                gathered += server.timeStorage.get(server.iterations);
+                                            }
                                             server.timeStorage.put(server.iterations, (double)gathered);
 
                                             synchronized (server) {
@@ -247,6 +253,13 @@ public class LocalTrainingServer implements ITrainingServer{
                                                     FileOutputStream fout = new FileOutputStream(f);
                                                     fout.write(modelBytes);
                                                 }
+                                            }
+
+                                            gathered++;
+
+                                            if(gathered >= server.evalIters){
+                                                gathered = 0;
+                                                server.iterations += server.metadata.targetRotation;
                                             }
                                         }
                                         break;
@@ -561,6 +574,9 @@ public class LocalTrainingServer implements ITrainingServer{
 
     @Override
     public void addScore(double score) {
+        if(this.statsStorage.containsKey(this.iterations)){
+            score += this.statsStorage.get(this.iterations);
+        }
         this.statsStorage.put(this.iterations, score);
     }
 
