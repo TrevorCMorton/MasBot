@@ -28,6 +28,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -285,7 +286,7 @@ public class LocalTrainingServer implements ITrainingServer{
                                             modelBytes = Files.readAllBytes(modelPath);
                                             output.writeObject(modelBytes);
                                         }
-                                        catch (FileNotFoundException f){
+                                        catch (NoSuchFileException f){
                                             System.out.println("Finishing evaluation");
                                             server.run = false;
                                             return;
