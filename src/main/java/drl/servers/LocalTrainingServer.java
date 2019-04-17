@@ -355,7 +355,7 @@ public class LocalTrainingServer implements ITrainingServer{
         }
         this.dataPoints.prepopulate(new DataPoint(randInput, Nd4j.rand(new int[]{1, MetaDecisionAgent.depth, MetaDecisionAgent.size, MetaDecisionAgent.size}), blankLabels, blankLabels));
         */
-        while(this.run || this.iterations < this.iterationsToTrain && this.stats){
+        while(this.run){
             System.out.print("");
 
             boolean sufficientDataGathered = this.pointsGathered > this.dataPoints.getMaxSize() && this.pointWait > 0;
