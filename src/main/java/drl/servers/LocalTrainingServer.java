@@ -111,12 +111,12 @@ public class LocalTrainingServer implements ITrainingServer{
         IAgent bbuttonAgent = new MeleeButtonAgent("B");
         IAgent cstickAgent = new MeleeJoystickAgent("C");
         IAgent abuttonAgent = new MeleeButtonAgent("A");
-        IAgent combination = new CombinationControlAgent(new String[][]{{"MR", "MN", "MNE", "ME", "MSE", "MS", "MSW", "MW", "MNW" },{"PA", "RA"}});
+        //IAgent combination = new CombinationControlAgent(new String[][]{{"MR", "MN", "MNE", "ME", "MSE", "MS", "MSW", "MW", "MNW" },{"PA", "RA"}});
         //dependencyGraph.addAgent(null, bbuttonAgent, "B");
-        //dependencyGraph.addAgent(new String[]{"M"}, abuttonAgent, "A");
-        //dependencyGraph.addAgent(new String[]{"B"}, joystickAgent, "M");
+        dependencyGraph.addAgent(null, abuttonAgent, "A");
+        dependencyGraph.addAgent(new String[]{"A"}, joystickAgent, "M");
         //dependencyGraph.addAgent(new String[]{"M"}, cstickAgent, "C");
-        dependencyGraph.addAgent(null, combination, "Comb");
+        //dependencyGraph.addAgent(null, combination, "Comb");
 
         int replaySize = Integer.parseInt(args[0]);
         int batchSize = Integer.parseInt(args[1]);
