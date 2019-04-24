@@ -289,56 +289,25 @@ public class MetaDecisionAgent {
         this.activations.add(activation2);
         this.activations.add(activation3);
 
-        int convOutSize1 = ((((MetaDecisionAgent.size - 16) / 8 + 1) - 4) / 2 + 1) - 2;
-        int convOutSize2 = ((((MetaDecisionAgent.size - 8) / 4 + 1) - 4) / 2 + 1) - 2;
-        int convOutSize3 = ((((MetaDecisionAgent.size - 6) / 3 + 1) - 4) / 2 + 1) - 2;
+        int convOutSize = ((((MetaDecisionAgent.size - 8) / 4 + 1) - 4) / 2 + 1) - 2;
 
         builder
-                .addLayer("Screen11",
-                        new ConvolutionLayer.Builder(16, 16).nIn(MetaDecisionAgent.depth).stride(8, 8).nOut(32).weightInit(WeightInit.XAVIER).activation(activation1).build(),
-                        "Screen")
-                .addLayer("Screen21",
-                        new ConvolutionLayer.Builder(4, 4).stride(2, 2).nOut(64).weightInit(WeightInit.XAVIER).activation(activation2).build(),
-                        "Screen11")
-                .addLayer("Screen31",
-                        new ConvolutionLayer.Builder(3, 3).stride(1, 1).nOut(64).weightInit(WeightInit.XAVIER).activation(activation3).build(),
-                        "Screen21")
-                .addVertex("Screen31Flat",
-                        new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize1, convOutSize1, 64)),
-                        "Screen31")
-
-                .addLayer("Screen12",
+                .addLayer("Screen1",
                     new ConvolutionLayer.Builder(8, 8).nIn(MetaDecisionAgent.depth).stride(4, 4).nOut(32).weightInit(WeightInit.XAVIER).activation(activation1).build(),
                     "Screen")
-                .addLayer("Screen22",
+                .addLayer("Screen2",
                         new ConvolutionLayer.Builder(4, 4).stride(2, 2).nOut(64).weightInit(WeightInit.XAVIER).activation(activation2).build(),
-                        "Screen12")
-                .addLayer("Screen32",
+                        "Screen1")
+                .addLayer("Screen3",
                         new ConvolutionLayer.Builder(3, 3).stride(1, 1).nOut(64).weightInit(WeightInit.XAVIER).activation(activation3).build(),
-                        "Screen22")
-                .addVertex("Screen32Flat",
-                        new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize2, convOutSize2, 64)),
-                        "Screen32")
-
-
-                .addLayer("Screen13",
-                        new ConvolutionLayer.Builder(6, 6).nIn(MetaDecisionAgent.depth).stride(3, 3).nOut(32).weightInit(WeightInit.XAVIER).activation(activation1).build(),
-                        "Screen")
-                .addLayer("Screen23",
-                        new ConvolutionLayer.Builder(4, 4).stride(2, 2).nOut(64).weightInit(WeightInit.XAVIER).activation(activation2).build(),
-                        "Screen13")
-                .addLayer("Screen33",
-                        new ConvolutionLayer.Builder(3, 3).stride(1, 1).nOut(64).weightInit(WeightInit.XAVIER).activation(activation3).build(),
-                        "Screen23")
-                .addVertex("Screen33Flat",
-                        new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize3, convOutSize3, 64)),
-                        "Screen33");
+                        "Screen2")
+                .addVertex("Screen3Flat",
+                        new PreprocessorVertex(new CnnToFeedForwardPreProcessor(convOutSize, convOutSize, 64)),
+                        "Screen3");
 
 
         List<String> inputNames = new ArrayList<>();
-        inputNames.add("Screen31Flat");
-        inputNames.add("Screen32Flat");
-        inputNames.add("Screen33Flat");
+        inputNames.add("Screen3Flat");
 
         return inputNames;
     }
